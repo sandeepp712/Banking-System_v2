@@ -5,6 +5,7 @@ import com.bank.banking_api.dto.TransactionResponse;
 import com.bank.banking_api.exception.DuplicateTransactionException;
 import com.bank.banking_api.persistence.JdbcTransactionRepository;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
@@ -27,6 +28,7 @@ public class TransferService {
     }
 
     @Transactional
+    @PreAuthorize("hasRole('ADMIN') OR (hasRole('USER') and #fromAccountId==authenication.principle.accountId)")
     public Transaction transfer(String fromAccountId, String toAccountId, Money amount, String idempotencyKey) {
 
         // 0. Validate input
