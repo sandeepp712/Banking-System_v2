@@ -63,7 +63,7 @@ public class JdbcAccountRepository implements AccountRepository {
 
     // To find the account number with exclusive locks
     public Optional<Account> findByAccountNumberForUpdate(String accountNumber) {
-        String sql= "Select * from accounts where account_number = ? FOR UPDATE";
+        String sql = "Select * from accounts where account_number = ? FOR UPDATE";
         List<Account> accounts = jdbcTemplate.query(sql, rowMapper, accountNumber);
         return accounts.stream().findFirst();
     }
@@ -77,5 +77,10 @@ public class JdbcAccountRepository implements AccountRepository {
     public List<Account> findAll() {
         String sql = "Select * from accounts ORDER BY created_at DESC";
         return jdbcTemplate.query(sql, rowMapper);
+    }
+
+    public void delete(String accountNumber) {
+        String sql = "Delete from accounts where account_number = ?";
+        jdbcTemplate.update(sql, accountNumber);
     }
 }

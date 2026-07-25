@@ -1,9 +1,6 @@
 package com.bank.banking_api.service;
 
-import com.bank.banking_api.domain.Account;
-import com.bank.banking_api.domain.AccountRepository;
-import com.bank.banking_api.domain.Money;
-import com.bank.banking_api.domain.Transaction;
+import com.bank.banking_api.domain.*;
 import com.bank.banking_api.persistence.JdbcTransactionRepository;
 import org.springframework.stereotype.Service;
 
@@ -16,7 +13,7 @@ public class AccountService {
 
 
     //Spring will automatically inject the JdbcAccountRepository here!
-    public AccountService(AccountRepository accountRepository,JdbcTransactionRepository transactionRepository) {
+    public AccountService(AccountRepository accountRepository, JdbcTransactionRepository transactionRepository) {
         this.accountRepository = accountRepository;
         this.transactionRepository = transactionRepository;
     }
@@ -51,28 +48,41 @@ public class AccountService {
      *
      * @return The Transaction record representing this deposit.
      */
-    public Account deposit(String accountNumber, Money amount,String idempotency_key) {
+    public Account deposit(String accountNumber, Money amount, String idempotency_key) {
         Account account = getAccount(accountNumber);
         account.credit(amount);
         accountRepository.update(account);
-        Transaction transaction = new Transaction("Deposit",null,accountNumber,amount,idempotency_key);
+        Transaction transaction = Transaction.builder()
+                .type(TransactionType.DEPOSIT)
+                .fromAccountId(null)
+                .toAccountId(accountNumber)
+                .Amount(amount)
+                .idempotencyKey(idempotency_key)
+                .build();
+
         transactionRepository.save(transaction);
 
         return account;
     }
 
 
-    public Account withdraw(String accountNumber, Money amount,String idempotency_key) {
+    public Account withdraw(String accountNumber, Money amount, String idempotency_key) {
         Account account = getAccount(accountNumber);
         account.debit(amount);
         accountRepository.update(account);
-        Transaction transaction = new Transaction("Withdraw",accountNumber,null,amount,idempotency_key);
+        Transaction transaction = Transaction.builder()
+                .type(TransactionType.WITHDRAW)
+                .fromAccountId(accountNumber)
+                .toAccountId(null)
+                .Amount(amount)
+                .idempotencyKey(idempotency_key)
+                .build();
         transactionRepository.save(transaction);
 
         return account;
     }
 
-    public List<Account> getAllAccounts(){
+    public List<Account> getAllAccounts() {
         return accountRepository.findAll();
 
     }

@@ -1,7 +1,7 @@
 package com.bank.banking_api.domain;
 
 public enum TransactionStatus{
-    COMPLETED,
+    COMMITTED,
     FAILED,
     PENDING,
 }

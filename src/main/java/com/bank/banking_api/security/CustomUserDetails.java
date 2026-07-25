@@ -1,38 +1,44 @@
 package com.bank.banking_api.security;
 
-import com.bank.banking_api.domain.UserInfo;
+import com.bank.banking_api.domain.User;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 public class CustomUserDetails implements UserDetails {
-    private final UserInfo userInfo;
+    private final User user;
 
-    public CustomUserDetails(UserInfo userInfo) {
-        this.userInfo = userInfo;
+    public CustomUserDetails(User user) {
+        this.user = user;
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singleton(new SimpleGrantedAuthority("ROLE_" + userInfo.getRole()));
+        return List.of(new SimpleGrantedAuthority(user.getRole().toString()));
     }
 
     public UUID getUserId() {
-        return userInfo.getUserId();
+        return user.getId();
     }
 
     @Override
     public String getUsername() {
-        return userInfo.getUsername();
+        return user.getUsername();
     }
 
     @Override
     public String getPassword() {
-        return userInfo.getPassword();
+        return user.getPasswordHash();
+    }
+
+
+    public String getRole() {
+        return user.getRole().toString();
     }
 
     // These can be driven by User fields, or simply return true for now
