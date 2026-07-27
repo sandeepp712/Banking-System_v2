@@ -11,24 +11,28 @@ public class Account{
     private final Instant createdAt;
     private Instant updatedAt;
 
+    public final UUID ownerId;
+
     // Constructor for creating a NEW account
-    public Account(String accountNumber, Money initialBalance) {
+    public Account(String accountNumber, Money initialBalance, UUID ownerId) {
         this.id = UUID.randomUUID();        // Generate new UUID
         this.accountNumber = accountNumber;
         this.balance = initialBalance;
         this.status = "ACTIVE";
         this.createdAt = Instant.now();
         this.updatedAt = Instant.now();
+        this.ownerId = ownerId;
     }
 
     // Constructor for REBUILDING an account from the Database
-    public Account(UUID id, String accountNumber, Money balance, String status, Instant createdAt, Instant updatedAt) {
+    public Account(UUID id, String accountNumber, Money balance, String status, Instant createdAt, Instant updatedAt, UUID ownerId) {
         this.id = id;
         this.accountNumber = accountNumber;
         this.balance = balance;
         this.status = status;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.ownerId = ownerId;
     }
 
 
@@ -39,6 +43,7 @@ public class Account{
     public String getStatus() { return status; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
+    public UUID getOwnerId() { return ownerId; }
 
     // --- Business Logic (The Engine) ---
     public void credit(Money amount) {

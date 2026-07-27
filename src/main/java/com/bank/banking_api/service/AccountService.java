@@ -1,10 +1,15 @@
 package com.bank.banking_api.service;
 
+import com.bank.banking_api.annotation.Auditable;
 import com.bank.banking_api.domain.*;
 import com.bank.banking_api.persistence.JdbcTransactionRepository;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service              // spring manage this bean(object)
 public class AccountService {
@@ -21,12 +26,12 @@ public class AccountService {
     /**
      * Creates a new account and saves it to the repository.
      */
-    public Account createAccount(String accountNo, Money initialBalance) {
+    public Account createAccount(String accountNo, Money initialBalance, UUID ownerId) {
         if (accountRepository.findByAccountNumber(accountNo).isPresent()) {
             throw new IllegalArgumentException("Account already exists : " + accountNo);
         }
 
-        Account account = new Account(accountNo, initialBalance);
+        Account account = new Account(accountNo, initialBalance, ownerId);
         accountRepository.save(account);
 
         return account;
@@ -39,8 +44,16 @@ public class AccountService {
      * @param
      * @return
      */
-    public Account getAccount(String accountNumber) {
-        return accountRepository.findByAccountNumber(accountNumber).orElseThrow(() -> new IllegalArgumentException("Account not found : " + accountNumber));
+    public Account getAccount(String accountNumber, UUID currentUser) {
+        Account account = accountRepository.findByAccountNumber(accountNumber).orElseThrow(() -> new IllegalArgumentException("You do not have permission to access this account."));
+
+        System.out.println("DEBUG: JWT User ID = '" + currentUser + "'");
+        System.out.println("DEBUG: DB Owner ID = '" + account.getOwnerId() + "'");
+
+        if (!account.getOwnerId().equals(currentUser)) {
+            throw new AccessDeniedException("You do not have permission to access this account.");
+        }
+        return account;
     }
 
     /**
@@ -48,10 +61,17 @@ public class AccountService {
      *
      * @return The Transaction record representing this deposit.
      */
-    public Account deposit(String accountNumber, Money amount, String idempotency_key) {
-        Account account = getAccount(accountNumber);
+    @Auditable(action = "DEPOSIT")
+    @Transactional
+    public Account deposit(String accountNumber, Money amount, String idempotency_key, UUID currentUser) {
+        //1 Check ownership First
+        Account account = getAccount(accountNumber, currentUser);
+
+        //2 Perform business logic
         account.credit(amount);
         accountRepository.update(account);
+
+        //3 Record ledger
         Transaction transaction = Transaction.builder()
                 .type(TransactionType.DEPOSIT)
                 .fromAccountId(null)
@@ -65,11 +85,17 @@ public class AccountService {
         return account;
     }
 
+    @Auditable(action = "WITHDRAW")
+    @Transactional
+    public Account withdraw(String accountNumber, Money amount, String idempotency_key, UUID currentUser) {
+        //1 Check ownership FIRST
+        Account account = getAccount(accountNumber, currentUser);
 
-    public Account withdraw(String accountNumber, Money amount, String idempotency_key) {
-        Account account = getAccount(accountNumber);
+        //2 Perform business logic
         account.debit(amount);
         accountRepository.update(account);
+
+        //3 Record ledger
         Transaction transaction = Transaction.builder()
                 .type(TransactionType.WITHDRAW)
                 .fromAccountId(accountNumber)
@@ -82,8 +108,7 @@ public class AccountService {
         return account;
     }
 
-    public List<Account> getAllAccounts() {
-        return accountRepository.findAll();
-
+    public List<Account> getAccountsForUser(UUID currentUser) {
+        return accountRepository.findAccountsForUser(currentUser);
     }
 }

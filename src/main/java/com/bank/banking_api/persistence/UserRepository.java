@@ -37,13 +37,20 @@ public class UserRepository {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    public Optional<User> findById(UUID id) {
+        String sql = "SELECT * FROM users WHERE id = ?";
+        try {
+            return Optional.ofNullable(jdbcTemplate.queryForObject(sql, userRowMapper, id));
+        }catch (EmptyResultDataAccessException e) {
+            return Optional.empty();
+        }
+    }
+
     public Optional<User> findByUsername(String username) {
         String sql = "SELECT * FROM users WHERE username = ?";
         try {
             User user = jdbcTemplate.queryForObject(sql, userRowMapper, username);
-            List<User> users = jdbcTemplate.query(sql, userRowMapper, username);
-
-            return users.stream().findFirst();
+            return Optional.ofNullable(user);
         } catch (EmptyResultDataAccessException e) {
             return Optional.empty();
         }
@@ -68,4 +75,6 @@ public class UserRepository {
         String sql = "DELETE FROM users WHERE username = ?";
         jdbcTemplate.update(sql, username);
     }
+
+
 }

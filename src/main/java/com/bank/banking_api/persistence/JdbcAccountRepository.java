@@ -21,6 +21,7 @@ public class JdbcAccountRepository implements AccountRepository {
 
     public RowMapper<Account> rowMapper = (rs, rowNum) -> {
         UUID id = rs.getObject("id", UUID.class);
+        UUID userId = rs.getObject("user_id", UUID.class);
         String accountNumber = rs.getString("account_number");
         BigDecimal amount = rs.getBigDecimal("balance_amount");
         String currency = rs.getString("balance_currency");
@@ -30,7 +31,7 @@ public class JdbcAccountRepository implements AccountRepository {
 
         Money balance = Money.of(amount, Currency.getInstance(currency));
 
-        return new Account(id, accountNumber, balance, status, createdAt, updatedAt);
+        return new Account(id, accountNumber, balance, status, createdAt, updatedAt, userId);
     };
 
     public JdbcAccountRepository(JdbcTemplate jdbcTemplate) {
@@ -39,8 +40,8 @@ public class JdbcAccountRepository implements AccountRepository {
 
     public void save(Account accounts) {
         String sql = """
-                INSERT INTO accounts (id, account_number, balance_amount, balance_currency, status, created_at, updated_at) 
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO accounts (id, account_number, balance_amount, balance_currency, status, created_at, updated_at,user_id) 
+                VALUES (?, ?, ?, ?, ?, ?, ?,?)
                 """;
 
         jdbcTemplate.update(sql,
@@ -50,8 +51,8 @@ public class JdbcAccountRepository implements AccountRepository {
                 accounts.getBalance().getCurrency().getCurrencyCode(),    //  Unpack Money to String
                 accounts.getStatus(),
                 java.sql.Timestamp.from(accounts.getCreatedAt()),
-                java.sql.Timestamp.from(accounts.getUpdatedAt())
-
+                java.sql.Timestamp.from(accounts.getUpdatedAt()),
+                accounts.getOwnerId()
         );
     }
 
@@ -64,8 +65,7 @@ public class JdbcAccountRepository implements AccountRepository {
     // To find the account number with exclusive locks
     public Optional<Account> findByAccountNumberForUpdate(String accountNumber) {
         String sql = "Select * from accounts where account_number = ? FOR UPDATE";
-        List<Account> accounts = jdbcTemplate.query(sql, rowMapper, accountNumber);
-        return accounts.stream().findFirst();
+        return jdbcTemplate.query(sql, rowMapper, accountNumber).stream().findFirst();
     }
 
     @Transactional
@@ -82,5 +82,10 @@ public class JdbcAccountRepository implements AccountRepository {
     public void delete(String accountNumber) {
         String sql = "Delete from accounts where account_number = ?";
         jdbcTemplate.update(sql, accountNumber);
+    }
+
+    public List<Account> findAccountsForUser(UUID userId) {
+        String sql = "Select * from accounts where user_id = ?";
+        return jdbcTemplate.query(sql, rowMapper, userId);
     }
 }
