@@ -7,6 +7,8 @@ import com.bank.banking_api.dto.DepositRequest;
 import com.bank.banking_api.dto.WithdrawRequest;
 import com.bank.banking_api.security.CustomUserDetails;
 import com.bank.banking_api.service.AccountService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +21,7 @@ import java.util.List;
 @RequestMapping("/api/accounts")
 public class AccountController {
     private final AccountService accountService;
+    private static final Logger log = LoggerFactory.getLogger(AccountController.class);
 
     public AccountController(AccountService accountService) {
         this.accountService = accountService;
@@ -74,6 +77,7 @@ public class AccountController {
 //                ? request.getIdempotencyKey()
 //                : UUID.randomUUID().toString();
 
+
         Money money = Money.of(request.getAmount(), Currency.getInstance("USD"));
 
         Account account = accountService.deposit(
@@ -101,15 +105,15 @@ public class AccountController {
 
 
         // If client didn't send a key, generate one (fallback for simple clients)
-        String idempotency_key = request.getIdempotencyKey() != null
-                ? request.getIdempotencyKey()
-                : "WDR-" + UUID.randomUUID().toString();
+//        String idempotency_key = request.getIdempotencyKey() != null
+//                ? request.getIdempotencyKey()
+//                : "WDR-" + UUID.randomUUID().toString();
 
-        Money money = Money.of(request.getAmount(), Currency.getInstance("INR"));
+        Money money = Money.of(request.getAmount(), Currency.getInstance("USD"));
         Account account = accountService.withdraw(
                 accountNumber,
                 money,
-                idempotency_key,
+                request.getIdempotencyKey(),
                 currentUser.getUserId()
         );
         return ResponseEntity.ok(account);
@@ -125,7 +129,8 @@ public class AccountController {
     //Get all accounts
     @GetMapping("/me")
     public ResponseEntity<List<Account>> getMyAccounts(@AuthenticationPrincipal CustomUserDetails currentUser) {
-        List<Account> accounts = accountService.getAccountsForUser(currentUser.getUserId());
-        return ResponseEntity.ok(accounts);
+//        log.info("CONTROLLER CHECK: currentUser={}", currentUser.getUserId());
+        List<Account> account = accountService.getAccountsForUser(currentUser.getUserId());
+        return ResponseEntity.ok(account);
     }
 }

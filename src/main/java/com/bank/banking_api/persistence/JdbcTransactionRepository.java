@@ -51,12 +51,9 @@ public class JdbcTransactionRepository implements TransactionRepository {
 
         String jsonCache = (transaction.getResponseCache() == null || transaction.getResponseCache().isBlank()) ? null : transaction.getResponseCache();
 
-        try {
 
-            jdbcTemplate.update(sql, transaction.getId(), transaction.getType(), transaction.getFromAccountId(), transaction.getToAccountId(), transaction.getAmount().getAmount(), transaction.getAmount().getCurrency().getCurrencyCode(), transaction.getStatus().name(), transaction.getIdempotencyKey(), java.sql.Timestamp.from(transaction.getCreatedAt()), jsonCache, transaction.getErrorMessage(), transaction.getCompletedAt() != null ? java.sql.Timestamp.from(transaction.getCompletedAt()) : null);
-        } catch (DuplicateKeyException e) {
-            throw new IllegalStateException("Idempotency key already exists: " + transaction.getIdempotencyKey(), e);
-        }
+        jdbcTemplate.update(sql, transaction.getId(), transaction.getType(), transaction.getFromAccountId(), transaction.getToAccountId(), transaction.getAmount().getAmount(), transaction.getAmount().getCurrency().getCurrencyCode(), transaction.getStatus().name(), transaction.getIdempotencyKey(), java.sql.Timestamp.from(transaction.getCreatedAt()), jsonCache, transaction.getErrorMessage(), transaction.getCompletedAt() != null ? java.sql.Timestamp.from(transaction.getCompletedAt()) : null);
+
     }
 
     //Crucial for Idempotency!

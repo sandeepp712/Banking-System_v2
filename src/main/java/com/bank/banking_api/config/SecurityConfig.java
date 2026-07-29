@@ -101,7 +101,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/accounts/**").authenticated()
 
                         //require a valid JWT for transfer
-                        .requestMatchers("/api/transfers").authenticated().anyRequest().authenticated()).addFilterBefore(rateLimiterFilter, UsernamePasswordAuthenticationFilter.class).addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                        .requestMatchers("/api/transfers").authenticated().anyRequest().authenticated())
+                .addFilterBefore(rateLimiterFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
 
         return http.build();

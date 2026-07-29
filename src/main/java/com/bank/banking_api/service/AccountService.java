@@ -8,7 +8,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service              // spring manage this bean(object)
@@ -64,8 +66,15 @@ public class AccountService {
     @Auditable(action = "DEPOSIT")
     @Transactional
     public Account deposit(String accountNumber, Money amount, String idempotency_key, UUID currentUser) {
+
         //1 Check ownership First
         Account account = getAccount(accountNumber, currentUser);
+
+        // Check the idempotency key
+        Optional<Transaction> existingKey=transactionRepository.findByIdempotencyKey(idempotency_key);
+        if (existingKey.isPresent()) {
+            return  account;
+        }
 
         //2 Perform business logic
         account.credit(amount);
@@ -77,7 +86,11 @@ public class AccountService {
                 .fromAccountId(null)
                 .toAccountId(accountNumber)
                 .Amount(amount)
+                .status(TransactionStatus.COMMITTED)
                 .idempotencyKey(idempotency_key)
+                .completedAt(Instant.now())
+                .responseCache("Success")
+                .errorMessage("none")
                 .build();
 
         transactionRepository.save(transaction);
@@ -91,6 +104,12 @@ public class AccountService {
         //1 Check ownership FIRST
         Account account = getAccount(accountNumber, currentUser);
 
+        // Check the idempotency key
+        Optional<Transaction> existingKey=transactionRepository.findByIdempotencyKey(idempotency_key);
+        if (existingKey.isPresent()) {
+            return  account;
+        }
+
         //2 Perform business logic
         account.debit(amount);
         accountRepository.update(account);
@@ -101,7 +120,11 @@ public class AccountService {
                 .fromAccountId(accountNumber)
                 .toAccountId(null)
                 .Amount(amount)
+                .status(TransactionStatus.COMMITTED)
                 .idempotencyKey(idempotency_key)
+                .completedAt(Instant.now())
+                .responseCache("Success")
+                .errorMessage("none")
                 .build();
         transactionRepository.save(transaction);
 

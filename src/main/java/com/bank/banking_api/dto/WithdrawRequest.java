@@ -4,13 +4,13 @@ import java.math.BigDecimal;
 
 public record WithdrawRequest(
         BigDecimal amount,
-        String idempotency
+        String idempotencyKey
 ) {
     public BigDecimal getAmount() {
         return amount;
     }
 
     public String getIdempotencyKey() {
-        return idempotency;
+        return idempotencyKey;
     }
 }

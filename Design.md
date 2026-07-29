@@ -1,8 +1,9 @@
 
 ### To-Do Task
 1. In Auth service I have to implement the refresh token 
-2.Rate limit for distributed system using redis
-
+2. Rate limit for distributed system using redis
+3. Optimistic locking for Hot Account or High scale under high write contention
+4. 
 
 
 
