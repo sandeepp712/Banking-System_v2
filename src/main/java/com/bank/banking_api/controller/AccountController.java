@@ -1,73 +1,136 @@
 package com.bank.banking_api.controller;
 
-
 import com.bank.banking_api.domain.Account;
 import com.bank.banking_api.domain.Money;
+import com.bank.banking_api.dto.CreateAccountRequest;
+import com.bank.banking_api.dto.DepositRequest;
+import com.bank.banking_api.dto.WithdrawRequest;
+import com.bank.banking_api.security.CustomUserDetails;
 import com.bank.banking_api.service.AccountService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
-import java.math.BigDecimal;
 import java.util.Currency;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/accounts")
-public class AccountController{
+public class AccountController {
     private final AccountService accountService;
+    private static final Logger log = LoggerFactory.getLogger(AccountController.class);
 
     public AccountController(AccountService accountService) {
         this.accountService = accountService;
     }
 
-
-    //Get account details
+    /**
+     * GET /api/accounts/{accountNumber} - Securely get ONE account (with ownership verification)
+     * <p>
+     * Why this is secure:
+     * - Uses @AuthenticationPrincipal to get the current user
+     * - Passes user ID to service for ownership verification
+     * - Returns 403 if user doesn't own the account (prevents IDOR)
+     */
     @GetMapping("/{accountNumber}")
-    public Account getAccount(@PathVariable String accountNumber){
-        return accountService.getAccount(accountNumber);
+    public ResponseEntity<Account> getAccount(@PathVariable String accountNumber, @AuthenticationPrincipal CustomUserDetails currentUser) {
+        //Pass the user Id to the service
+        Account account = accountService.getAccount(accountNumber, currentUser.getUserId());
+        return ResponseEntity.ok(account);
     }
 
-    //Create new account
+
+    /**
+     * POST /api/accounts - Create a new account (with ownership)
+     * <p>
+     * Why this is secure:
+     * - Uses request body (REST best practice)
+     * - Assigns account to current user
+     * - Prevents users from creating accounts for others
+     */
     @PostMapping
-    public Account createAccount(@RequestParam String accountNumber,
-                                 @RequestParam BigDecimal amount){
-        Money balance=Money.of(amount, Currency.getInstance("INR"));
-        return accountService.createAccount(accountNumber, balance);
+    public ResponseEntity<Account> createAccount(@RequestBody CreateAccountRequest request, @AuthenticationPrincipal CustomUserDetails currentUser) {
+        Money balance = Money.of(request.getAmount(), Currency.getInstance("USD"));
+        Account account = accountService.createAccount(request.getAccountNumber(), balance, currentUser.getUserId());
+
+        return ResponseEntity.ok(account);
     }
 
-    // Deposit in account
+    /**
+     * POST /api/accounts/{accountNumber}/deposit - Deposit money
+     * <p>
+     * Why this is secure:
+     * - Passes user ID to service for ownership verification
+     * - Uses request body for amount (not path)
+     * - Generates idempotency key if not provided
+     */
     //POST http://localhost:8080/api/accounts/ACC-999/deposit?amount=500
     @PostMapping("/{accountNumber}/deposit")
-    public Account deposit(@PathVariable String accountNumber,
-                           @RequestParam BigDecimal amount,
-                           @RequestParam(required = false) String idempotency_key) {
+    public ResponseEntity<Account> deposit(@PathVariable String accountNumber,
+                                           @RequestBody DepositRequest request,
+                                           @AuthenticationPrincipal CustomUserDetails currentUser) {
         // If client didn't send a key, generate one (fallback for simple clients)
-        if (idempotency_key == null || idempotency_key.isEmpty()) {
-            idempotency_key = "WITHDRAW-" + UUID.randomUUID().toString();
-        }
+//        String idempotency_key = request.getIdempotencyKey() != null
+//                ? request.getIdempotencyKey()
+//                : UUID.randomUUID().toString();
 
-        Money money = Money.of(amount, Currency.getInstance("INR"));
-        return accountService.deposit(accountNumber, money,idempotency_key);
+
+        Money money = Money.of(request.getAmount(), Currency.getInstance("USD"));
+
+        Account account = accountService.deposit(
+                accountNumber,
+                money,
+                request.getIdempotencyKey(),
+                currentUser.getUserId()
+        );
+
+        return ResponseEntity.ok(account);
     }
 
-    //Withdraw from account
+
+    /**
+     * POST /api/accounts/{accountNumber}/withdraw - Withdraw money
+     * <p>
+     * Why this is secure:
+     * - Same ownership verification as deposit
+     */
     // POST http://localhost:8080/api/accounts/ACC-999/withdraw?amount=200
     @PostMapping("/{accountNumber}/withdraw")
-    public Account withdraw(@PathVariable String accountNumber,
-                            @RequestParam BigDecimal amount,
-                            @RequestParam(required = false) String idempotency_key) {
-        // If client didn't send a key, generate one (fallback for simple clients)
-        if (idempotency_key == null || idempotency_key.isEmpty()) {
-            idempotency_key = "WITHDRAW-" + UUID.randomUUID().toString();
-        }
+    public ResponseEntity<Account> withdraw(@PathVariable String accountNumber,
+                                            @RequestBody WithdrawRequest request,
+                                            @AuthenticationPrincipal CustomUserDetails currentUser) {
 
-        Money money = Money.of(amount, Currency.getInstance("INR"));
-        return accountService.withdraw(accountNumber, money,idempotency_key);
+
+        // If client didn't send a key, generate one (fallback for simple clients)
+//        String idempotency_key = request.getIdempotencyKey() != null
+//                ? request.getIdempotencyKey()
+//                : "WDR-" + UUID.randomUUID().toString();
+
+        Money money = Money.of(request.getAmount(), Currency.getInstance("USD"));
+        Account account = accountService.withdraw(
+                accountNumber,
+                money,
+                request.getIdempotencyKey(),
+                currentUser.getUserId()
+        );
+        return ResponseEntity.ok(account);
     }
 
+    /**
+     * GET /api/accounts/me - Get ALL accounts for the current user
+     * <p>
+     * Why this is secure:
+     * - Only returns accounts owned by current user
+     * - Prevents users from seeing others' accounts
+     */
     //Get all accounts
-    @GetMapping("/getAllAccounts")
-    public List<Account> getAllAccounts(){
-        return accountService.getAllAccounts();
+    @GetMapping("/me")
+    public ResponseEntity<List<Account>> getMyAccounts(@AuthenticationPrincipal CustomUserDetails currentUser) {
+//        log.info("CONTROLLER CHECK: currentUser={}", currentUser.getUserId());
+        List<Account> account = accountService.getAccountsForUser(currentUser.getUserId());
+        return ResponseEntity.ok(account);
     }
 }

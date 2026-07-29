@@ -20,9 +20,7 @@ public class User {
         this.created_at = LocalDateTime.ofInstant(createdAt,TimeZone.getDefault().toZoneId());
     }
 
-    public UUID getId() {
-        return id;
-    }
+    public UUID getId() { return id;}
 
     public String getUsername() {
         return username;

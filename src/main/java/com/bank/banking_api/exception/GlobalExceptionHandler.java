@@ -1,27 +1,27 @@
 package com.bank.banking_api.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-
 import java.time.Instant;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 // This annotation tells spring: "watch all controllers for exceptions"
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    private static final Logger log = Logger.getLogger(GlobalExceptionHandler.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
 
     //1. Handle Domain speific Business Exceptions(400 Bad request)
     @ExceptionHandler({InsufficientFundsException.class, AccountFrozenException.class, CurrencyMismatchException.class,})
-    public ResponseEntity<?> handleBusinessException(RuntimeException ex, HttpServletRequest request) {
+    public ResponseEntity<ErrorResponse> handleBusinessException(RuntimeException ex, HttpServletRequest request) {
         ErrorResponse error = new ErrorResponse(
                 extractErrorCode(ex),
                 ex.getMessage(),
@@ -34,7 +34,7 @@ public class GlobalExceptionHandler {
 
     //2. Handle Missing Resources(404 Not found)
     @ExceptionHandler(AccountNotFoundException.class)
-    public ResponseEntity<?> handleAccountNotFoundException(RuntimeException ex, HttpServletRequest request) {
+    public ResponseEntity<ErrorResponse> handleAccountNotFoundException(RuntimeException ex, HttpServletRequest request) {
         ErrorResponse error = new ErrorResponse(
                 "ACCOUNT_NOT_FOUND",
                 ex.getMessage(),
@@ -47,9 +47,9 @@ public class GlobalExceptionHandler {
 
     //3 Handle Idempotency
     @ExceptionHandler(DuplicateKeyException.class)
-    public ResponseEntity<?> handleDuplicateKeyException(RuntimeException ex, HttpServletRequest request) {
+    public ResponseEntity<ErrorResponse> handleDuplicateKeyException(RuntimeException ex, HttpServletRequest request) {
         ErrorResponse error = new ErrorResponse(
-                "Duplicate_REQUEST",
+                "CONFLICT",
                 "A request with this idempotency key is already being processed or has been completed.",
                 HttpStatus.CONFLICT.value(),
                 request.getRequestURI(),
@@ -58,8 +58,61 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 
+    //Handle Access Denied (security/Idor failure) -> 403
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+        ErrorResponse error = new ErrorResponse(
+                "Access Denied.",
+                ex.getMessage(),
+                HttpStatus.FORBIDDEN.value(),
+                request.getRequestURI(),
+                Instant.now()
+        );
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
+    //Handle Expired Token -> return 401
+    @ExceptionHandler(JwtTokenExpiredException.class)
+    public ResponseEntity<ErrorResponse> handleJwtTokenExpiredException(JwtTokenExpiredException ex, HttpServletRequest request) {
+        ErrorResponse error = new ErrorResponse(
+                "TOKEN_EXPIRED",
+                ex.getMessage(),
+                HttpStatus.UNAUTHORIZED.value(),
+                request.getRequestURI(),
+                Instant.now()
+        );
+        return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+    }
+
+    // Handle Invalid Token -> return 401
+    @ExceptionHandler(JwtTokenInvalidException.class)
+    public ResponseEntity<ErrorResponse> handleJwtTokenInvalidException(JwtTokenInvalidException ex, HttpServletRequest request) {
+        ErrorResponse error = new ErrorResponse(
+                "INVALID_TOKEN",
+                ex.getMessage(),
+                HttpStatus.UNAUTHORIZED.value(),
+                request.getRequestURI(),
+                Instant.now()
+        );
+        return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+    }
+
+    //Handle Same transaction Multiple times
+    @ExceptionHandler(DuplicateTransactionException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateTransactionException(DuplicateTransactionException ex, HttpServletRequest request) {
+        ErrorResponse error = new ErrorResponse(
+                "SAME_TRANSACTION",
+                ex.getMessage(),
+                HttpStatus.CONFLICT.value(),
+                request.getRequestURI(),
+                Instant.now()
+        );
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    // Handle Invalid arguments (400 Bad requests)
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<?> handleBadRequest(IllegalArgumentException ex, HttpServletRequest request) {
+    public ResponseEntity<ErrorResponse> handleBadRequest(IllegalArgumentException ex, HttpServletRequest request) {
         ErrorResponse error = new ErrorResponse(
                 "INVALID_ARGUMENT",
                 ex.getMessage(),
@@ -74,7 +127,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleUnexpectedException(Exception ex, HttpServletRequest request) {
         // LOG THE FULL STACK TRACE HERE for debugging
-        log.log(Level.SEVERE, ex.getMessage(), ex);
+        log.error("Unexpected error occured at path: {}",request.getRequestURI(), ex);
         // NEVER expose the actual exception message or stack trace to the client
         ErrorResponse error = new ErrorResponse(
                 "INTERNAL_SERVER_ERROR",

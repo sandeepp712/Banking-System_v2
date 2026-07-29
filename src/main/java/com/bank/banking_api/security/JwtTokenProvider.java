@@ -1,15 +1,15 @@
 package com.bank.banking_api.security;
 
-import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
-import java.util.Base64;
 import java.util.Date;
 import java.util.UUID;
 
 import com.bank.banking_api.config.RSAKeyConfig;
+import com.bank.banking_api.exception.JwtTokenExpiredException;
+import com.bank.banking_api.exception.JwtTokenInvalidException;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class JwtTokenProvider {
-    private final long jwtExpirationInMs = 900_000;
+    private final long jwtExpirationInMs = 900_000;  // 15 minutes
     private final RSAKeyConfig rsaKeyConfig;
 
     // Inject our config bean
@@ -55,60 +55,83 @@ public class JwtTokenProvider {
                 .compact();
     }
 
-
-    /**
-     * Validates the token. Returns true if the token is correctly signed and not expired.
-     */
-    public boolean validateToken(String token) {
+    // Single parse method: extract claims or throws the correct authenticationExceptions
+    public Claims extractAllClaimsFromToken(String token) {
         try {
-            Jwts.parser()
+            return Jwts.parser()
                     .verifyWith(getVerificationKey())
                     .build()
-                    .parseSignedClaims(token);
-            return true;
+                    .parseClaimsJws(token)
+                    .getPayload();
+        } catch (ExpiredJwtException e) {
+            throw new JwtTokenExpiredException("Jwt token has expired");
         } catch (JwtException | IllegalArgumentException e) {
-            // Log the error in production
-            return false;
+            throw new JwtTokenInvalidException("Invalid JWT token");
         }
     }
 
-    /**
-     * Extracts the user ID (sub claim) from the token.
-     */
     public UUID getUserIdFromToken(String token) {
-        try {
-            String subject = Jwts.parser()
-                    .verifyWith(getVerificationKey())
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload()
-                    .getSubject();
-
-            return UUID.fromString(subject);
-        } catch (JwtException e) {
-            throw new JwtException("Invalid Token", e);
-        }
-    }
-
-    /**
-     * Extract the role from the token
-     */
-    public String getRoleFromToken(String token) {
-        return Jwts.parser()
-                .verifyWith(getVerificationKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload()
-                .get("role", String.class);
+        String subject = extractAllClaimsFromToken(token).getSubject();
+        return UUID.fromString(subject);
     }
 
 
-    public String getUsernameFromToken(String token) {
-        return Jwts.parser()
-                .verifyWith(getVerificationKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload()
-                .get("username", String.class);
-    }
+//    /**
+//     * Validates the token. Returns true if the token is correctly signed and not expired.
+//     */
+//    public boolean validateToken(String token) {
+//        try {
+//            Jwts.parser()
+//                    .verifyWith(getVerificationKey())
+//                    .build()
+//                    .parseSignedClaims(token);
+//            return true;
+//        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+//            // throws AuthenticationException -> spring security returns 401
+//            throw new JwtTokenExpiredException("JWT token has expired");
+//        } catch (io.jsonwebtoken.JwtException | IllegalArgumentException e) {
+//            // throws AuthenicationException -> srping security returns 401
+//            throw new JwtTokenInvalidException("Invalid JWT token");
+//        }
+//    }
+//
+//    /**
+//     * Extracts the user ID (sub claim) from the token.
+//     */
+//    public UUID getUserIdFromToken(String token) {
+//        try {
+//            String subject = Jwts.parser()
+//                    .verifyWith(getVerificationKey())
+//                    .build()
+//                    .parseSignedClaims(token)
+//                    .getPayload()
+//                    .getSubject();
+//
+//            return UUID.fromString(subject);
+//        } catch (JwtException e) {
+//            throw new JwtException("Invalid Token", e);
+//        }
+//    }
+//
+//    /**
+//     * Extract the role from the token
+//     */
+//    public String getRoleFromToken(String token) {
+//        return Jwts.parser()
+//                .verifyWith(getVerificationKey())
+//                .build()
+//                .parseSignedClaims(token)
+//                .getPayload()
+//                .get("role", String.class);
+//    }
+//
+//
+//    public String getUsernameFromToken(String token) {
+//        return Jwts.parser()
+//                .verifyWith(getVerificationKey())
+//                .build()
+//                .parseSignedClaims(token)
+//                .getPayload()
+//                .get("username", String.class);
+//    }
 }

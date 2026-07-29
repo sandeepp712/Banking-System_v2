@@ -2,8 +2,10 @@ package com.bank.banking_api.domain;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public interface AccountRepository {
+
     void save(Account accounts);
 
     Optional<Account> findByAccountNumber(String accountNumber);
@@ -15,4 +17,7 @@ public interface AccountRepository {
     List<Account> findAll();
 
     void delete(String accountNumber);
+
+    List<Account> findAccountsForUser(UUID currentUser);
+
 }
