@@ -7,7 +7,7 @@ import com.bank.banking_api.exception.AccountNotFoundException;
 import com.bank.banking_api.exception.DuplicateTransactionException;
 import com.bank.banking_api.exception.InsufficientFundsException;
 import com.bank.banking_api.persistence.JdbcTransactionRepository;
-import org.springframework.security.access.AccessDeniedException;
+import com.bank.banking_api.exception.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
