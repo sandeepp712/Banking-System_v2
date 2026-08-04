@@ -4,7 +4,6 @@ import com.bank.banking_api.annotation.Auditable;
 import com.bank.banking_api.domain.*;
 import com.bank.banking_api.persistence.JdbcTransactionRepository;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

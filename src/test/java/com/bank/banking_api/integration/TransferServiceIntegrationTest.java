@@ -2,8 +2,10 @@ package com.bank.banking_api.integration;
 
 import com.bank.banking_api.domain.*;
 import com.bank.banking_api.exception.AccessDeniedException;
+import com.bank.banking_api.exception.DuplicateTransactionException;
 import com.bank.banking_api.exception.InsufficientFundsException;
 import com.bank.banking_api.persistence.UserRepository;
+import com.bank.banking_api.security.CurrentUserProvider;
 import com.bank.banking_api.security.CustomUserDetails;
 import com.bank.banking_api.service.AccountService;
 import com.bank.banking_api.service.TransferService;
@@ -31,6 +33,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -76,9 +79,14 @@ public class TransferServiceIntegrationTest {
         UUID userId = UUID.randomUUID();
         jdbcTemplate.update(
                 "INSERT INTO users (id, username, password_hash, role) VALUES (?, ?, ?, ?)",
-                userId, "testuser", "hashedpass", "ROLE_USER"
+                userId, "testuser", "hashedpass#@23", "ROLE_USER"
         );
-        authenticateUser(userId);
+
+        UUID userId2 = UUID.randomUUID();
+        jdbcTemplate.update(
+                "INSERT INTO users (id, username, password_hash, role) VALUES (?, ?, ?, ?)",
+                userId2, "testuser1", "hashedpassas#da3", "ROLE_USER"
+        );
 
         // 2. Insert accounts using the correct columns
         UUID acc1Id = UUID.randomUUID();
@@ -91,7 +99,7 @@ public class TransferServiceIntegrationTest {
 
         jdbcTemplate.update(
                 "INSERT INTO accounts (id, account_number, balance_amount, balance_currency, user_id) VALUES (?, ?, ?, ?, ?)",
-                acc2Id, "ACC-2", new BigDecimal("2000.00"), "USD", userId
+                acc2Id, "ACC-2", new BigDecimal("2000.00"), "USD", userId2
         );
     }
 
@@ -115,6 +123,7 @@ public class TransferServiceIntegrationTest {
         String key = UUID.randomUUID().toString();
         Money amount = Money.of(new BigDecimal("100.00"), Currency.getInstance("USD"));
         UUID currentUser = getTestUserId();
+        authenticateUser(currentUser);
 
         Transaction tx = transferService.transfer("ACC-1", "ACC-2", amount, key, currentUser);
 
@@ -134,6 +143,7 @@ public class TransferServiceIntegrationTest {
         String key = UUID.randomUUID().toString();
         Money amount = Money.of(new BigDecimal("100.00"), Currency.getInstance("USD"));
         UUID currentUser = getTestUserId();
+        authenticateUser(currentUser);
 
         // First request
         Transaction tx1 = transferService.transfer("ACC-1", "ACC-2", amount, key, currentUser);
@@ -157,6 +167,8 @@ public class TransferServiceIntegrationTest {
     void idempptency_different_key_return_cached_transaction() {
         String key = UUID.randomUUID().toString();
         UUID currentUser = getTestUserId();
+        authenticateUser(currentUser);
+
         Money amount = Money.of(new BigDecimal("100.00"), Currency.getInstance("USD"));
         Money amount2 = Money.of(new BigDecimal("200.00"), Currency.getInstance("USD"));
 
@@ -228,12 +240,19 @@ public class TransferServiceIntegrationTest {
     }
 
 
+
     private UUID getTestUserId() {
         return jdbcTemplate.queryForObject("select id from users where username = 'testuser'", UUID.class);
     }
 
+    private UUID getTestUserId2() {
+        return jdbcTemplate.queryForObject("select id from users where username = 'testuser1'", UUID.class);
+    }
+
     private void authenticateUser(UUID userId) {
-        User user = new User(userId, "testuser", "hashed", AccountRole.RETAIL_USER, Instant.now());
+        String username = jdbcTemplate.queryForObject("select username from users where id = ?", String.class, userId);
+
+        User user = new User(userId, username, "hashed", AccountRole.RETAIL_USER, Instant.now());
         CustomUserDetails userDetails = new CustomUserDetails(user);
         Authentication authentication = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
         SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -241,7 +260,9 @@ public class TransferServiceIntegrationTest {
 
     private Authentication createAuthentication(UUID userId) {
         // Fetch user from DB or construct a minimal User object
-        User user = new User(userId, "testuser", "hashed", AccountRole.RETAIL_USER, Instant.now());
+        String username = jdbcTemplate.queryForObject("select username from users where id = ?", String.class, userId);
+
+        User user = new User(userId, username, "hashed", AccountRole.RETAIL_USER, Instant.now());
         CustomUserDetails userDetails = new CustomUserDetails(user);
         return new UsernamePasswordAuthenticationToken(
                 userDetails,
@@ -253,26 +274,28 @@ public class TransferServiceIntegrationTest {
     @Test
     @DisplayName("6. Concurrency: 20 concurrent random transfers maintain total balance")
     void concurrentTransfers_moneyConservation() throws Exception {
-        UUID currentUser = getTestUserId();
+        UUID ownerofAcc1 = getTestUserId();
+        UUID ownerofAcc2 = getTestUserId2();
+
         int threadCount = 20;
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
         CountDownLatch latch = new CountDownLatch(threadCount);
         AtomicReference<Exception> error = new AtomicReference<>();
 
         for (int i = 0; i < threadCount; i++) {
+            final boolean acc1Toacc2 = (i % 2 == 0);
+
             executor.submit(() -> {
                 try {
-                    // ✅ Set authentication for THIS thread
-                    SecurityContextHolder.getContext().setAuthentication(createAuthentication(currentUser));
-
                     String key = UUID.randomUUID().toString(); // ✅ Fresh key per transfer
                     Money amount = Money.of(new BigDecimal("10.00"), Currency.getInstance("USD"));
 
-                    // Randomly transfer either way
-                    if (Math.random() < 0.5) {
-                        transferService.transfer("ACC-1", "ACC-2", amount, key, currentUser);
+                    if (acc1Toacc2) {
+                        SecurityContextHolder.getContext().setAuthentication(createAuthentication(ownerofAcc1));
+                        transferService.transfer("ACC-1", "ACC-2", amount, key, ownerofAcc1);
                     } else {
-                        transferService.transfer("ACC-2", "ACC-1", amount, key, currentUser);
+                        SecurityContextHolder.getContext().setAuthentication(createAuthentication(ownerofAcc2));
+                        transferService.transfer("ACC-2", "ACC-1", amount, key, ownerofAcc2);
                     }
                 } catch (InsufficientFundsException e) {
                     // ✅ Expected when an account runs low – ignore
@@ -305,4 +328,52 @@ public class TransferServiceIntegrationTest {
         assertEquals(new BigDecimal("3000.00"), total, "Money conservation violated!");
     }
 
+
+    @Test
+    @DisplayName("7. Concurrency: Same idempotency key, 10 threads → exactly 1 commits")
+    void concurrentSameIdempotencyKey_exactlyOneCommits() throws Exception {
+        String sharedKey = UUID.randomUUID().toString();
+        Money amount = Money.of(new BigDecimal("10.00"), Currency.getInstance("USD"));
+        UUID owner = getTestUserId();
+
+        int threadCount = 10;
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        CountDownLatch startGate = new CountDownLatch(1); // Ensures all threads start simultaneously
+        CountDownLatch doneLatch = new CountDownLatch(threadCount);
+        AtomicInteger successCount = new AtomicInteger(0);
+        AtomicInteger cachedCount = new AtomicInteger(0);
+
+        for (int i = 0; i < threadCount; i++) {
+            executor.submit(() -> {
+                try {
+                    startGate.await(); // All threads wait here until released
+                    Transaction tx = transferService.transfer("ACC-1", "ACC-2", amount, sharedKey, owner);
+                    if (tx.getStatus() == TransactionStatus.COMMITTED) {
+                        successCount.incrementAndGet();
+                    }
+                } catch (DuplicateTransactionException e) {
+                    cachedCount.incrementAndGet();
+                } catch (Exception e) {
+                    // Unexpected
+                } finally {
+                    doneLatch.countDown();
+                }
+            });
+        }
+
+        startGate.countDown(); // Release all threads simultaneously
+        assertTrue(doneLatch.await(30, TimeUnit.SECONDS));
+        executor.shutdown();
+
+        // Exactly one thread should have created the transaction
+        // The rest should have gotten the cached result or a duplicate exception
+        Integer txCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM transactions WHERE idempotency_key = ?", Integer.class, sharedKey);
+        assertEquals(1, txCount, "Only ONE transaction record should exist");
+
+        // Balance should reflect exactly ONE transfer of 10.00
+        BigDecimal balance1 = jdbcTemplate.queryForObject(
+                "SELECT balance_amount FROM accounts WHERE account_number = 'ACC-1'", BigDecimal.class);
+        assertEquals(new BigDecimal("990.00"), balance1);
+    }
 }
