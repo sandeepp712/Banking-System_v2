@@ -1,5 +1,7 @@
 package com.bank.banking_api.domain;
 
+import com.bank.banking_api.exception.InsufficientFundsException;
+
 import java.time.Instant;
 import java.util.UUID;
 
@@ -53,7 +55,7 @@ public class Account{
 
     public void debit(Money amount) {
         if (this.balance.isLessThan(amount)) {
-            throw new IllegalArgumentException("Insufficient funds");
+            throw new InsufficientFundsException("Insufficient funds");
         }
         this.balance = this.balance.subtract(amount);
         this.updatedAt = Instant.now();

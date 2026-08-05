@@ -2,8 +2,8 @@ package com.bank.banking_api.domain;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.UUID;
 import java.util.TimeZone;
+import java.util.UUID;
 
 public class User {
     private UUID id;

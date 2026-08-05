@@ -2,6 +2,7 @@ package com.bank.banking_api.service;
 
 import com.bank.banking_api.domain.AccountRole;
 import com.bank.banking_api.domain.User;
+import com.bank.banking_api.exception.UserAlreadyExistsException;
 import com.bank.banking_api.persistence.UserRepository;
 import com.bank.banking_api.security.CustomUserDetails;
 import com.bank.banking_api.security.JwtTokenProvider;
@@ -31,7 +32,7 @@ public class AuthService {
 
     public void register(String username, String rawPassword, AccountRole role, Instant created_at) {
         if (userRepository.findByUsername(username).isPresent()) {
-            throw new IllegalArgumentException("Username already exists!");
+            throw new UserAlreadyExistsException("Username already exists!");
         }
 
         // For password complexity
@@ -48,9 +49,9 @@ public class AuthService {
 
     public String login(String username, String rawPassword) {
         //1. Check if the user exists Before attempting authenication
-        if (!userRepository.findByUsername(username).isPresent()) {
-            throw new IllegalArgumentException("Username does not exists! Please register with username: "+username);
-        }
+//        if (!userRepository.findByUsername(username).isPresent()) {
+//            throw new IllegalArgumentException("Username does not exists! Please register with username: "+username);
+//        }
 
         //2. Proceed Authenication using Spring Security
         Authentication auth = authenticationManager.authenticate(

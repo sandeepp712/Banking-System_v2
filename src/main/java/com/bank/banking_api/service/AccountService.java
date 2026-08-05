@@ -4,7 +4,6 @@ import com.bank.banking_api.annotation.Auditable;
 import com.bank.banking_api.domain.*;
 import com.bank.banking_api.persistence.JdbcTransactionRepository;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -63,7 +62,7 @@ public class AccountService {
      *
      * @return The Transaction record representing this deposit.
      */
-    @Auditable(action = "DEPOSIT")
+    @Auditable(action = "DEPOSIT", sourceAccountArgIndex = 1, targetAccountArgIndex = -1)
     @Transactional
     public Account deposit(String accountNumber, Money amount, String idempotency_key, UUID currentUser) {
 
@@ -71,9 +70,9 @@ public class AccountService {
         Account account = getAccount(accountNumber, currentUser);
 
         // Check the idempotency key
-        Optional<Transaction> existingKey=transactionRepository.findByIdempotencyKey(idempotency_key);
+        Optional<Transaction> existingKey = transactionRepository.findByIdempotencyKey(idempotency_key);
         if (existingKey.isPresent()) {
-            return  account;
+            return account;
         }
 
         //2 Perform business logic
@@ -98,16 +97,16 @@ public class AccountService {
         return account;
     }
 
-    @Auditable(action = "WITHDRAW")
+    @Auditable(action = "WITHDRAW", sourceAccountArgIndex = 1, targetAccountArgIndex = -1)
     @Transactional
     public Account withdraw(String accountNumber, Money amount, String idempotency_key, UUID currentUser) {
         //1 Check ownership FIRST
         Account account = getAccount(accountNumber, currentUser);
 
         // Check the idempotency key
-        Optional<Transaction> existingKey=transactionRepository.findByIdempotencyKey(idempotency_key);
+        Optional<Transaction> existingKey = transactionRepository.findByIdempotencyKey(idempotency_key);
         if (existingKey.isPresent()) {
-            return  account;
+            return account;
         }
 
         //2 Perform business logic
