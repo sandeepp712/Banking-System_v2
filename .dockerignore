@@ -1,6 +1,37 @@
+# ==========================================
+#  BANKING_SYSTEM - .dockerignore
+#  Prevents secrets and heavy build files from entering Docker
+# ==========================================
+
+# Build output(heavy package)
 target/
-!.mvn/wrapper/maven-wrapper.jar
-**/*.log
-**/.DS_Store
+
+# Version control ( not need in the image)
+.gitignore
+.git/
+
+# IDE files
 .idea/
 *.iml
+
+
+# Logs (do not bake local logs into the images)
+*.log
+logs/
+
+# Environment and secrets
+.env
+*.pem
+
+#Documentation
+*.md
+README.md
+
+# Maven wrapper
+.mvn/
+mvnw.cmd
+mvnw
+
+# OS junk files
+.DS_Store
+Thumbs.db
