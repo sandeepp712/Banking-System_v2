@@ -62,7 +62,7 @@ public class AccountService {
      *
      * @return The Transaction record representing this deposit.
      */
-    @Auditable(action = "DEPOSIT", sourceAccountArgIndex = 1, targetAccountArgIndex = -1)
+    @Auditable(action = "DEPOSIT", sourceAccountArgIndex = 0, targetAccountArgIndex = -1)
     @Transactional
     public Account deposit(String accountNumber, Money amount, String idempotency_key, UUID currentUser) {
 
@@ -97,7 +97,7 @@ public class AccountService {
         return account;
     }
 
-    @Auditable(action = "WITHDRAW", sourceAccountArgIndex = 1, targetAccountArgIndex = -1)
+    @Auditable(action = "WITHDRAW", sourceAccountArgIndex = 0, targetAccountArgIndex = -1)
     @Transactional
     public Account withdraw(String accountNumber, Money amount, String idempotency_key, UUID currentUser) {
         //1 Check ownership FIRST
