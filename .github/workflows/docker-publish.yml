@@ -1,0 +1,67 @@
+name: Docker build & Publish
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{github.repository}}
+
+jobs:
+  build-and-push:
+    name: Build & Push to GHCR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Run maven tests (safety Check)
+        run: mvn clean test
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/postgres
+          SPRING_DATASOURCE_USERNAME: postgres
+          SPRING_DATASOURCE_PASSWORD: postgres
+          JWT_PUBLIC_KEY: MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyB7cgmamXXaZvpwq4qo4Kclnyhn3FzW0m3DU+nPORkMCw3zJNvTN9OnXaIP4HCoxtVWPta+UmlgjKkMyeDrInZmqem/WAAOZ89ghvDYOgCq0hC3k3UrXeQgFEeWa56H5MVDN+3//ZkI3JHOufHbU+K7r0uhNu0U2Oz6CEBmRWKrvejPTXrnB0dXfFQNM+cWz4A1DihBzpwzkEKhovbZ0nj0+L4oLLUJwj0AjBXyp4cEwhWUUU8DxkbUd1pxK9ldYpIaph/Jb6EbU/TlsTsb3f40E0DHs0kzR05GTqistEqo6yPXbSMFb7O0OCifAp2pgG9vul+Sqo8y14qeTFKprVwIDAQDB
+          JWT_PRIVATE_KEY: MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQDIHtyCZqZddpm+nCriqjgpyWfKGfcXNbSbcNT6c85GQwLDfMk29M306ddog/gcKjG1VY+1r5SaWCMqQzJ4Osidmap6b9YAA5nz2CG8Ng6AKrSELeTdStd5CAUR5ZrnofkxUM37f/9mQjckc658dtT4ruvS6E27RTY7PoIQGZFYqu96M9NeucHR1d8VA0z5xbPgDUOKEHOnDOQQqGi9tnSePT4vigstQnCPQCMFfKnhwTCFZRRTwPGRtR3WnEr2V1ikhqmH8lvoRtT9OWxOxvd/jQTQMezSTNHTkVOqKy0SqjrI9dtIwVvs7Q4KJ8GnamAb2+6X5KqjzLXip5MUqmtXAgMBAAECggEAD4D/PxsKHd49CwdjoIE6LgKXMpElviaVrMqRCtZDT4OMM0OiUx+kKn/zWvreaKWG3wWXR1F9sczM7KPyxQhzgmzlSEG3J/PKJETFAvqCemt/O2j9fNIk32Y/qPig3PvaJ81FfWFCktQ5HBnaQB+fYE+CSv9fBk3WZcCcqE1SyrZQUui0A7m2qwbuWUyUpFohgD1mZYPv3eUn1F9viUh35z6ubriaLcLtrI/TI6+W83sOFKwvph8yP3S6HHTqSlhsxnWS8ly5TmQtYpqtc372rp7nbhBwIv2jX/EKCsHXsWtNXBpNX17EKnAAXnELEtiwoQLJLqFelLak7UXi2O5YAQKBgQDQ6lul+8WG5iPHwhZ79EiWCUW+aN38xniKP+X2kcgkW+ux9uo7VbSSNj2L+AJvCisyLXAwyGDXJTt20Gh6rsSXErMX3CphKmBMNq7ge6BHdDAcf3eEw+RVMkYb2BBimzFyrE6F3uZEo8j2n5gvZf2jgoXhp/AnHQ/Bw/19ZGjqSQKBgQD1ORHpiHJckGNdxB80vTbnzbEikAD7oA6vHdavlKuQitxJZOiBibeCrQkPE8ssKpPDd3BeUZ5WMG0RuImGGS8rk1JJvdCIs88VV1hB96Jo59q4VXDRBrjWkTSqDKpDlFzgemKNqlHFEuFlNYPMJLsVHkXwoXCe6sb0dch3F7monwKBgQDDzeN3/jFz7d87Kj3Ij3w4oxgrDj6A28O+T4VJQ/lBmqWddr6yPfGv2AZ3WUtupyk1LkEod6XL/6lsAojp80NuFKimhEN0LjNzOw1MeJIQZmVxUEbEuJUZBLWRA0DYKnx97eDqt686RgfknlAUnJLM3Vh91tjOz/4krXy4OZPbgQKBgQCx4A3AKjtaLVoGf+Zq6P1Us31TpsUvwHAmUiyR+/Ney3ryugF1RSIZ5c32Y9MyXEgGtzKJGAcUWdgjzInk/YubvicoWklTf6osvsjEQQ5LrjKXF1LYLFoTOgzLdJhkoM+l/OBUBkF+BC3+rgzGHbaeoPD2lQQOIhri5DTfPhRr3QKBgQCf0qh7vKaDf5JnV26OIY+VgD8RGcigmg9u3ftjLVLzc7qDCX797GbrvWPY62vXlxjcaXE6R8qsDAMklOzY3AeIFG1nvevLNYVNYg+YnFkcp3KGlP/YCu1VU34Gl+Qkmv79FFNcsA/ee6np8FX+TmY9Tt2vrX2709PIUb96qZ2wnw==
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Github Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-actions@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push
+        uses: docker/build-push-actions@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cahce-to: type=gha,mode=max
