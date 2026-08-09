@@ -1,37 +1,43 @@
 services:
-  # Service 1: PostgreSql Database
-  postgres:
-    image: postgres:15-alpine
-    container_name: banking-db
+  # ==========================================
+  # POSTGRESQL DATABASE
+  # ==========================================
+  postgres_db:
+    image: postgres:16-alpine
+    container_name: postgres_db
     environment:
-      POSTGRES_DB: banking_system
-      POSTGRES_USER: bank_user
-      POSTGRES_PASSWORD: sandeep712
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL","pg_isready -U bank_user -d banking_system"]
-      interval: 5s
+      test: ["CMD-SHELL","pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
+    restart: unless-stopped
 
-  # Service 2: Spring boot App
+
+  # ==========================================
+  # SPRING BOOT APPLICATION
+  # ==========================================
   banking_api:
     build: . # Builds from your dockerfile
     container_name: banking-app
+    depends_on:
+      postgres_db:
+        condition: service_healthy      # Wait until postgres health check passes
     ports:
       - "8080:8080"
     environment:
-      DB_HOST: postgres
-      DB_NAME: banking_system
-      DB_USER: bank_user
-      DB_password: sandeep712
-    depends_on:
-      postgres:
-        condition: service_healthy
-
+      SPRING_FLYWAY_ENABLED: "true"
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "false"
+    env_file:
+      - .env                            # Loads All environment variable from .env file
     restart: unless-stopped
 
 volumes:
