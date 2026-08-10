@@ -1,107 +1,107 @@
-name: CI/CD Pipline
-
-# When should this workflow run?
-on:
-  push:
-    branches: [main,master] # Run when you push to main/master
-  pull_request:
-    branches: [main,master] # Run when someone creates a PR
-
-
-# What jobs should it run?
-jobs:
-  # Job 1: Build and Test
-  build:
-    runs-on: ubuntu-latest  # Use Github's Ubuntu server
-
-    services:
-      # Spin up a PostgreSql container for testing
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_DB: banking_system
-          POSTGRES_USER: bank_user
-          POSTGRES_PASSWORD: test_password
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg-isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    steps:
-      # Step 1:Check out your code
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      # Step 2:Set up Java
-      - name : Set up JDK 17
-        uses: actions/setup-java@v3
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      # Step 3: Cache Maven dependencies (speeds up builds)
-      - name: Cache Maven packages
-        uses: actions/cache@v3
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
-
-      # Step 4: Run tests
-      - name: Runt tests
-        env:
-          DB_HOST: localhost
-          DB_NAME: banking_system
-          DB_USER: bank_user
-          DB_PASSWORD: test_password
-        run: ./mvnw test
-
-      # Step 5: Build the Docker image
-      - name: Build Docker image
-        run: docker build -t banking-api .
-
-      # Step 6: Test the Docker container
-      - name: Test Docker container
-        run: |
-          docker run -d --name test-container \
-            -e DB_HOST=host.docker.internal \
-            -e DB_NAME=banking_system \
-            -e DB_USER=bank_user \
-            -e DB_PASSWORD= test_password \
-            -p 8080:8080 banking_api
-          sleep 10
-          curl http://localhost:8080/actuator/health || exit 1
-          docker stop test-container
-          docker rm test-container
-
-  # Job 2: Push to Docker HUB (only on main branch)
-  push:
-    needs: build          # Only run if 'build' job succeeds
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'     #only on main branch
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      #Step 1: Log in to Docker Hub
-      - name: Login to Docker Hub
-        uses: docker/login-actions@v2
-        with:
-          username: ${{ secrets.Docker_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-
-      # Step 2: Build and push
-      - name : Build and push Docker image
-        uses: docker/build-push-actions@v4
-        with:
-          context: .
-          push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/banking-api:latest
-
-
-
-
+#name: CI/CD Pipline
+#
+## When should this workflow run?
+#on:
+#  push:
+#    branches: [main,master] # Run when you push to main/master
+#  pull_request:
+#    branches: [main,master] # Run when someone creates a PR
+#
+#
+## What jobs should it run?
+#jobs:
+#  # Job 1: Build and Test
+#  build:
+#    runs-on: ubuntu-latest  # Use Github's Ubuntu server
+#
+#    services:
+#      # Spin up a PostgreSql container for testing
+#      postgres:
+#        image: postgres:15-alpine
+#        env:
+#          POSTGRES_DB: banking_system
+#          POSTGRES_USER: bank_user
+#          POSTGRES_PASSWORD: test_password
+#        ports:
+#          - 5432:5432
+#        options: >-
+#          --health-cmd pg-isready
+#          --health-interval 10s
+#          --health-timeout 5s
+#          --health-retries 5
+#
+#    steps:
+#      # Step 1:Check out your code
+#      - name: Checkout code
+#        uses: actions/checkout@v3
+#
+#      # Step 2:Set up Java
+#      - name : Set up JDK 17
+#        uses: actions/setup-java@v3
+#        with:
+#          java-version: '17'
+#          distribution: 'temurin'
+#
+#      # Step 3: Cache Maven dependencies (speeds up builds)
+#      - name: Cache Maven packages
+#        uses: actions/cache@v3
+#        with:
+#          path: ~/.m2
+#          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+#          restore-keys: ${{ runner.os }}-m2
+#
+#      # Step 4: Run tests
+#      - name: Runt tests
+#        env:
+#          DB_HOST: localhost
+#          DB_NAME: banking_system
+#          DB_USER: bank_user
+#          DB_PASSWORD: test_password
+#        run: ./mvnw test
+#
+#      # Step 5: Build the Docker image
+#      - name: Build Docker image
+#        run: docker build -t banking-api .
+#
+#      # Step 6: Test the Docker container
+#      - name: Test Docker container
+#        run: |
+#          docker run -d --name test-container \
+#            -e DB_HOST=host.docker.internal \
+#            -e DB_NAME=banking_system \
+#            -e DB_USER=bank_user \
+#            -e DB_PASSWORD= test_password \
+#            -p 8080:8080 banking_api
+#          sleep 10
+#          curl http://localhost:8080/actuator/health || exit 1
+#          docker stop test-container
+#          docker rm test-container
+#
+#  # Job 2: Push to Docker HUB (only on main branch)
+#  push:
+#    needs: build          # Only run if 'build' job succeeds
+#    runs-on: ubuntu-latest
+#    if: github.ref == 'refs/heads/main'     #only on main branch
+#
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@v3
+#
+#      #Step 1: Log in to Docker Hub
+#      - name: Login to Docker Hub
+#        uses: docker/login-actions@v2
+#        with:
+#          username: ${{ secrets.Docker_HUB_USERNAME }}
+#          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+#
+#      # Step 2: Build and push
+#      - name : Build and push Docker image
+#        uses: docker/build-push-actions@v4
+#        with:
+#          context: .
+#          push: true
+#          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/banking-api:latest
+#
+#
+#
+#
