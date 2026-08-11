@@ -51,7 +51,7 @@ USER appuser
 
 #2 Copy the JAR from the Builder stage
 # we only copy the final JAR, not the source code or Maven
-COPY target/*.jar app.jar
+COPY --from=builder /app/target/*.jar app.jar
 
 #3. Expose port 8080
 # This is the port our spring boot app listens on
