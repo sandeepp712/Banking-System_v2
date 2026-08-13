@@ -3,11 +3,17 @@ name: PR Quality Checks
 on:
   pull_request:
     branches: [ main ]
+    paths:
+      - 'backend/**'
 
 jobs:
     test:
       name: Run Unit and Integration Tests
       runs-on: ubuntu-latest
+
+      defaults:
+        run:
+          working-directory: ./backend
 
       services:
         postgres:
