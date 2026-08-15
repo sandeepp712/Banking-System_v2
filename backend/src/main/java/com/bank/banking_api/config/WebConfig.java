@@ -10,8 +10,10 @@ public class WebConfig implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")              //Allow all API endpoints
                 .allowedOrigins("http://localhost:5173")      // Vite frontend
-                .allowedMethods("*")
-                .allowedHeaders("*")
-                .allowCredentials(true);
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedHeaders("Origin","Content-Type","Accept","Authorization","X-Requested-With","Access-Control-Allow-Origin","Access-Control-Allow-Credentials")
+                .exposedHeaders("Set-Cookie")
+                .allowCredentials(true)
+                .maxAge(3600);
     }
 }

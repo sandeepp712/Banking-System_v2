@@ -30,6 +30,7 @@ public record TransferRequest(
         return amount;
     }
 
+
     public String getIdempotencyKey() {
         return idempotencyKey;
     }

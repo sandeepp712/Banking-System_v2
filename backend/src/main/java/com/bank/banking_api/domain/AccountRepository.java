@@ -19,5 +19,4 @@ public interface AccountRepository {
     void delete(String accountNumber);
 
     List<Account> findAccountsForUser(UUID currentUser);
-
 }
