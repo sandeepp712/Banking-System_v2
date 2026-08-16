@@ -62,6 +62,7 @@ export const AuthProvider = ({children}: { children: ReactNode }) => {
             const message = error.response?.data?.message || "Logout failed";
         } finally {
             setUser(null);
+            setIsLoading(false);
         }
     };
 

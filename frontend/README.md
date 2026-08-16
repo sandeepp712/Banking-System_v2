@@ -1,75 +1,75 @@
-# React + TypeScript + Vite
+# 🏦 Banking System - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the **React + TypeScript** frontend for the Multithreaded Banking API. It provides a secure, responsive dashboard for users to manage their accounts, transfer money, and view transaction history—all while communicating with the Spring Boot backend via JWT-authenticated `HttpOnly` cookies.
 
-Currently, two official plugins are available:
+## ✨ Key Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **🔐 Secure Authentication**: Login/Register flow using JWT stored in `HttpOnly` cookies (XSS-safe).
+- **📊 Dashboard Overview**: Quick glance at total balance, account list, and recent transactions.
+- **💸 Idempotent Transfers**: Frontend automatically generates a unique `idempotencyKey` (`crypto.randomUUID()`) to prevent double-debiting on network retries.
+- **📜 Transaction History**: Complete audit trail of all sent/received funds.
+- **🎨 Modern UI**: Built with Tailwind CSS for a clean, responsive banking interface.
+- **⚡ Performance**: Blazing fast development with Vite.
 
-## React Compiler
+## 🛠️ Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Layer | Technology |
+| :--- | :--- |
+| **Core** | React 18, TypeScript |
+| **Build Tool** | Vite |
+| **Styling** | Tailwind CSS |
+| **HTTP Client** | Axios (with interceptors for 401 handling) |
+| **Routing** | React Router DOM (v6) |
+| **State Management** | React Context (Auth state) |
 
-## Expanding the ESLint configuration
+## 🚀 Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Prerequisites
+- **Node.js** (v18 or higher)
+- **npm** (v9 or higher)
+- The **Backend API** must be running locally (or accessible via network).
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### 1. Clone the Repository (if not already done)
+```bash
+1. git clone https://github.com/sandeepp712/Banking-System_v2.git
+2. cd Banking-System_v2/frontend
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+3. npm install
+4. npm run dev
+5. npm run build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Frontend Directory Structure
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```text
+frontend/
+├── src/
+│   ├── api/                      # Axios clients & API fetch functions
+│   │   ├── client.ts             # (authApiClient, bankingApiClient with interceptors)
+│   │   └── accountApi.ts         # fetchAccounts, fetchTransactions
+│   │
+│   ├── features/                 # Feature-based modules (Scalable architecture)
+│   │   ├── auth/                 # Login, Register, AuthContext
+│   │   ├── accounts/             # Accounts list page
+│   │   ├── dashboard/            # Main dashboard (stats, quick actions)
+│   │   ├── transfers/            # Transfer form (with idempotency)
+│   │   ├── history/              # Transaction history table
+│   │   └── layout/               # Shell (Sidebar + Header + Outlet)
+│   │
+│   ├── App.tsx                   # Routes & Providers
+│   └── main.tsx                  # React entry point (StrictMode)
+│
+├── index.html                    # Vite entry HTML
+├── tailwind.config.js            # Tailwind CSS configuration
+└── package.json                  # Dependencies & scripts
+```
 
+### 🤝 Contributing
+```bash
+  Fork the repository.
+  Create a feature branch (git switch -c feature/amazing-feature).
+  Commit your changes (git commit -m 'Add some amazing feature').
+  Push to the branch (git push origin feature/amazing-feature).
+  Open a Pull Request
 ```
