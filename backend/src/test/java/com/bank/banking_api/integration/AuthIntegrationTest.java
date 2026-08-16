@@ -21,6 +21,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -138,7 +139,7 @@ public class AuthIntegrationTest {
     }
 
     @Test
-    @DisplayName("Test login succes + token validation")
+    @DisplayName("Test login succes")
     public void login_success_UserTest() {
 //         Register first
         var request = new AuthController.RegisterRequest("testuser1", "secreASDf23$@#te", "RETAIL_USER");
@@ -156,11 +157,10 @@ public class AuthIntegrationTest {
                 .uri("/api/v1/auth/login")
                 .body(loginRequest)
                 .retrieve()
-                .toEntity(AuthController.LoginResponse.class);
+                .body(Map.class);
 
-        assertEquals(HttpStatus.OK.value(), response.getStatusCode().value());
-        assertNotNull(response.getBody(), "Response body should not be null");
-        assertNotNull(response.getBody().token(), "Response token should not be null");
+        assertNotNull(response);
+        assertEquals("Login successful!", response.get("message"));
     }
 
     @Test

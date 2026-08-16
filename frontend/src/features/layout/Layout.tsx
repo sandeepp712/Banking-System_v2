@@ -17,7 +17,7 @@ export default function Layout() {
             <div className="w-64 bg-white shadow-md flex flex-col">
                 <div className="p-4 border-b">
                     <h1 className="text-xl font-bold text-blue-600">🏦 MyBank</h1>
-                    <p className="text-sm text-gray-500">{user?.username}</p>
+                    {/*<p className="text-sm text-gray-500">{user?.username}</p>*/}
                 </div>
                 <nav className="flex-1 p-4 space-y-2">
                     <Link to="/dashboard" className="block p-2 hover:bg-blue-50 rounded">
