@@ -2,6 +2,7 @@ package com.bank.banking_api.controller;
 
 import com.bank.banking_api.domain.Account;
 import com.bank.banking_api.domain.Money;
+import com.bank.banking_api.dto.AccountDto;
 import com.bank.banking_api.dto.CreateAccountRequest;
 import com.bank.banking_api.dto.DepositRequest;
 import com.bank.banking_api.dto.WithdrawRequest;
@@ -18,7 +19,7 @@ import java.util.Currency;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/accounts")
+@RequestMapping("/api/v1/accounts")
 public class AccountController {
     private final AccountService accountService;
     private static final Logger log = LoggerFactory.getLogger(AccountController.class);
@@ -26,6 +27,7 @@ public class AccountController {
     public AccountController(AccountService accountService) {
         this.accountService = accountService;
     }
+
 
     /**
      * GET /api/accounts/{accountNumber} - Securely get ONE account (with ownership verification)
@@ -127,10 +129,20 @@ public class AccountController {
      * - Prevents users from seeing others' accounts
      */
     //Get all accounts
-    @GetMapping("/me")
-    public ResponseEntity<List<Account>> getMyAccounts(@AuthenticationPrincipal CustomUserDetails currentUser) {
+    @GetMapping("/account")
+    public ResponseEntity<List<AccountDto>> getMyAccounts(@AuthenticationPrincipal CustomUserDetails currentUser) {
 //        log.info("CONTROLLER CHECK: currentUser={}", currentUser.getUserId());
-        List<Account> account = accountService.getAccountsForUser(currentUser.getUserId());
-        return ResponseEntity.ok(account);
+        // Find accounts from DB
+        List<Account> accounts = accountService.getAccountsForUser(currentUser.getUserId());
+
+        List<AccountDto> accountDtos = accounts.stream()
+                .map(account -> new AccountDto(
+                        account.getAccountNumber(),
+                        account.getBalance().getAmount(),
+                        account.getBalance().getCurrency().getCurrencyCode()
+                ))
+                .toList();
+
+        return ResponseEntity.ok(accountDtos);
     }
 }

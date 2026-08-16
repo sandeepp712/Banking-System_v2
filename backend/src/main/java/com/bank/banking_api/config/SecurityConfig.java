@@ -17,9 +17,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import tools.jackson.databind.ObjectMapper;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Configuration
@@ -47,9 +52,29 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        // 1. Explicitly list your frontend URL (Vite is usually 5173, React is 3000)
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173"));
+
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
+
+        // 2. CRITICAL: This MUST be true for HttpOnly cookies to work across domains/ports
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, RateLimiterService rateLimiterService, RateLimiterFilter rateLimiterFilter) throws Exception {
-        http.headers(headers -> headers
+        http
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .headers(headers -> headers
                         //1 Prevent Clickjacking: Completely forbid anyone from putting your API/site in an <iframe>
                         .frameOptions(frameOption -> frameOption.deny())
 
@@ -70,38 +95,40 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable()).sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
 
-                .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint((request, response, authException) -> {
+//                .exceptionHandling(ex -> ex
+//                        .authenticationEntryPoint((request, response, authException) -> {
+//
+//                            // 1. Log it as a WARN, not an ERROR.
+//                            // This prevents waking up the on-call engineer for a simple expired token.
+//                            Logger log = LoggerFactory.getLogger("SecurityAudit");
+//                            log.warn("Authentication failed for path {}: {}", request.getRequestURI(), authException.getMessage());
+//
+//                            // 2. Set the correct HTTP Status
+//                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401
+//                            response.setContentType("application/json");
+//                            response.setCharacterEncoding("UTF-8");
+//
+//                            // 3. Write a clean JSON response
+//                            Map<String, Object> errorBody = new HashMap<>();
+//                            errorBody.put("errorCode", "UNAUTHORIZED");
+//                            errorBody.put("message", authException.getMessage());
+//                            errorBody.put("status", 401);
+//                            errorBody.put("path", request.getRequestURI());
+//
+//                            new ObjectMapper().writeValue(response.getOutputStream(), errorBody);
+//                        })
+//                )
 
-                            // 1. Log it as a WARN, not an ERROR.
-                            // This prevents waking up the on-call engineer for a simple expired token.
-                            Logger log = LoggerFactory.getLogger("SecurityAudit");
-                            log.warn("Authentication failed for path {}: {}", request.getRequestURI(), authException.getMessage());
 
-                            // 2. Set the correct HTTP Status
-                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401
-                            response.setContentType("application/json");
-                            response.setCharacterEncoding("UTF-8");
-
-                            // 3. Write a clean JSON response
-                            Map<String, Object> errorBody = new HashMap<>();
-                            errorBody.put("errorCode", "UNAUTHORIZED");
-                            errorBody.put("message", authException.getMessage());
-                            errorBody.put("status", 401);
-                            errorBody.put("path", request.getRequestURI());
-
-                            new ObjectMapper().writeValue(response.getOutputStream(), errorBody);
-                        })
-                )
-
-
-                .authorizeHttpRequests(auth -> auth.requestMatchers("/api/v1/auth/**").permitAll()
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/v1/auth/login", "/api/v1/auth/register").permitAll()
 
                         // require a valid JWT for accounts
                         .requestMatchers("/api/accounts/**").authenticated()
+                        .requestMatchers("/api/transfers/**").authenticated()
+                        .requestMatchers("/actuator/**").permitAll()
+                        .anyRequest().authenticated())
 
-                        //require a valid JWT for transfer
-                        .requestMatchers("/api/transfers").authenticated().anyRequest().authenticated())
                 .addFilterBefore(rateLimiterFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Currency;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -76,13 +77,23 @@ public class JdbcTransactionRepository implements TransactionRepository {
 
     // Update the status
     public void update(Transaction transaction) {
-        System.out.println("UPDATING: key=" + transaction.getIdempotencyKey()
-                + ", status=" + transaction.getStatus()
-                + ", responseCache=" + transaction.getResponseCache());
+        System.out.println("UPDATING: key=" + transaction.getIdempotencyKey() + ", status=" + transaction.getStatus() + ", responseCache=" + transaction.getResponseCache());
 
         String sql = "UPDATE transactions SET status=?,response_cache=COALESCE(?,response_cache),error_message=?,completed_at=? where idempotency_key=?";
 
         String jsonCache = (transaction.getResponseCache() == null || transaction.getResponseCache().isBlank()) ? null : transaction.getResponseCache();
         jdbcTemplate.update(sql, transaction.getStatus().name(), jsonCache, transaction.getErrorMessage(), transaction.getCompletedAt() != null ? java.sql.Timestamp.from(transaction.getCompletedAt()) : null, transaction.getIdempotencyKey());
+    }
+
+    // All Transaction of user
+    public List<Transaction> findByUserId(UUID userId) {
+        String sql = """
+                 SELECT t.* FROM transactions t
+                        JOIN accounts a ON a.account_number = t.from_account OR a.account_number = t.to_account
+                        WHERE a.user_id = ?
+                        ORDER BY t.created_at DESC
+                """;
+
+        return jdbcTemplate.query(sql, rowMapper, userId);
     }
 }

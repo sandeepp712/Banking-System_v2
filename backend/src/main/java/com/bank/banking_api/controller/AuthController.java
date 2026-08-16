@@ -1,15 +1,20 @@
 package com.bank.banking_api.controller;
 
 import com.bank.banking_api.domain.AccountRole;
+import com.bank.banking_api.security.CustomUserDetails;
 import com.bank.banking_api.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.micrometer.observation.autoconfigure.ObservationProperties;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -38,11 +43,41 @@ public class AuthController {
 
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
+        //1. Authenticate the user
         String token = authService.login(request.username, request.password);
 
-        return ResponseEntity.ok(new LoginResponse(token, "Bearer "));
+        //2. Create an HttpOnly cookie
+        ResponseCookie cookie = ResponseCookie.from("JWT_TOKEN", token)
+                .httpOnly(true)
+                .secure(false)
+                .path("/")
+                .maxAge(24 * 60 * 60)
+                .sameSite("Strict")                     //CSRF protection
+                .build();
+
+        //3. Add cookie to response
+        response.addHeader("Set-Cookie", cookie.toString());
+
+        //4. Return success (no token in body)
+        return ResponseEntity.ok().body(Map.of("message", "Login successful!"));
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(HttpServletResponse response) {
+        ResponseCookie cookie = ResponseCookie.from("JWT_TOKEN", "")
+                .httpOnly(true)
+                .secure(false)
+                .path("/")
+                .maxAge(0)
+                .sameSite("Strict")
+                .build();
+
+        response.addHeader("Set-Cookie", cookie.toString());
+
+        return ResponseEntity.ok().body(Map.of("message", "Logout successful!"));
+    }
+
 
 
     //DTO (Records)

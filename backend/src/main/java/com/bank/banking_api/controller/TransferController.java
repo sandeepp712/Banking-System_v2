@@ -18,7 +18,7 @@ import java.util.UUID;
 import static tools.jackson.databind.jsonFormatVisitors.JsonValueFormat.UUID;
 
 @RestController
-@RequestMapping("/api/transfers")
+@RequestMapping("/api/v1/transfers")
 public class TransferController {
     private final TransferService transferService;
 
