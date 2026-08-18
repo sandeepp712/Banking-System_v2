@@ -45,8 +45,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String token = resolveToken(request);
-        System.out.println(" JWT FILTER TRIGGERED! Token: " + token);
-
+//        String userAgent = request.getHeader("User-Agent");
+//
+//        System.out.printf("JWT FILTER TRIGGERED! Method: {}, Path: {}, User-Agent: {}",request.getMethod(),path,userAgent);
+        System.out.println("JWT FILTER TRIGGERED! token: " + token);
         if (token == null) {
             Cookie[] cookies = request.getCookies();
             if (cookies != null) {
