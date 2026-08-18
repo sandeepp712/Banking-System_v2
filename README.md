@@ -1,6 +1,6 @@
 # 🏦 Multithreaded Banking System
 
-[![CI/CD](https://github.com/sandeepp712/Banking-System_v2/actions/workflows/pr-check.yml/badge.svg)](https://github.com/sandeepp712/Banking-System_v2/actions/workflows/pr-checks.yml)
+[![CI/CD](https://github.com/sandeepp712/Banking-System_v2/actions/workflows/pr-check.yml/badge.svg)](https://github.com/sandeepp712/Banking-System_v2/actions/workflows/pr-check.yml)
 [![Docker Build & Publish](https://github.com/sandeepp712/Banking-System_v2/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/sandeepp712/Banking-System_v2/actions/workflows/docker-publish.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Java](https://img.shields.io/badge/Java-21-blue.svg)](https://adoptium.net/)
