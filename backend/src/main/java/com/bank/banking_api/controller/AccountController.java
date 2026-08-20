@@ -145,4 +145,19 @@ public class AccountController {
 
         return ResponseEntity.ok(accountDtos);
     }
+
+
+    @GetMapping("/all")
+    public ResponseEntity<List<AccountDto>> getAllAccounts() {
+        List<Account> accounts = accountService.getAllAccounts();
+        return ResponseEntity.ok(accounts.stream().map(this::toDto).toList());
+    }
+
+    private AccountDto toDto(Account account) {
+        return new AccountDto(
+                account.getAccountNumber(),
+                account.getBalance().getAmount(),
+                account.getBalance().getCurrency().getCurrencyCode()
+        );
+    }
 }

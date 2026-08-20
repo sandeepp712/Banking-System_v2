@@ -1,17 +1,17 @@
 import {useState} from 'react';
-import {useAuth} from './AuthContext.tsx';
+import {useAuth} from '../../context/AuthContext.tsx';
 import {Link, useNavigate} from 'react-router-dom';
 
 export default function RegisterPage() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [role, setRole] = useState('ROLE_USER');
+    const [role, setRole] = useState('RETAIL_USER');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const {register, isLoading} = useAuth();
     const navigate = useNavigate();
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.SubmitEvent) => {
         e.preventDefault();
         setError('');
         setSuccess('');
@@ -58,8 +58,8 @@ export default function RegisterPage() {
                         value={role}
                         onChange={(e) => setRole(e.target.value)}
                     >
-                        <option value="ROLE_USER">User</option>
-                        <option value="ROLE_ADMIN">Admin</option>
+                        <option value="RETAIL_USER">User</option>
+                        <option value="ADMIN">Admin</option>
                     </select>
                     <button
                         type="submit"

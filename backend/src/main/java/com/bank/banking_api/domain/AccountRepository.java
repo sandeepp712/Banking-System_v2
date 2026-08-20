@@ -16,7 +16,10 @@ public interface AccountRepository {
 
     List<Account> findAll();
 
+    List<Account> findAllAccounts();
+
     void delete(String accountNumber);
 
     List<Account> findAccountsForUser(UUID currentUser);
+
 }

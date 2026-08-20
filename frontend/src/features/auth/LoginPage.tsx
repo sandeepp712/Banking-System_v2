@@ -1,5 +1,5 @@
 import {useState} from "react";
-import {useAuth} from "./AuthContext.tsx";
+import {useAuth} from "../../context/AuthContext.tsx";
 import {Link, useNavigate} from "react-router-dom";
 
 export default function LoginPage() {
@@ -9,7 +9,7 @@ export default function LoginPage() {
     const {login, isLoading} = useAuth();
     const navigate = useNavigate();
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
         e.preventDefault();
         setError("");
         try {

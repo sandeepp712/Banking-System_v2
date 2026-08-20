@@ -1,5 +1,6 @@
-import {createContext, useEffect, useState, ReactNode, useContext} from "react";
-import {authApiClient} from "../../api/client.ts";
+import {createContext, useState, useContext} from "react";
+import type {ReactNode} from "react";
+import {authApiClient} from "../api/client.ts";
 
 interface User {
     id: string;
@@ -60,6 +61,7 @@ export const AuthProvider = ({children}: { children: ReactNode }) => {
             await authApiClient.post('/logout');
         } catch (error: any) {
             const message = error.response?.data?.message || "Logout failed";
+            throw new Error(message);
         } finally {
             setUser(null);
             setIsLoading(false);

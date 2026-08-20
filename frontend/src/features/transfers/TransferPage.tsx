@@ -1,15 +1,15 @@
-import {useState, useEffect} from 'react';
-import {useNavigate} from 'react-router-dom';
-import {bankingApiClient} from '../../api/client';
-import {fetchAccount} from '../../api/accountApi';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { bankingApiClient } from '../../api/client';
+import { fetchAccount, fetchAllAccounts } from '../../api/accountApi';
 import type {Account} from "../../api/accountApi";
 
 export default function TransferPage() {
-    const [accounts, setAccounts] = useState<Account[]>([]);
+    const [userAccounts, setUserAccounts] = useState<Account[]>([]);   // For "From Account"
+    const [allAccounts, setAllAccounts] = useState<Account[]>([]);     // For "To Account"
     const [fromAccount, setFromAccount] = useState('');
     const [toAccount, setToAccount] = useState('');
     const [amount, setAmount] = useState('');
-    const [currency, setCurrency] = useState('USD');
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({
         type: null,
@@ -17,13 +17,26 @@ export default function TransferPage() {
     });
     const navigate = useNavigate();
 
-    // Load accounts for the dropdown
+    // Load accounts on mount
     useEffect(() => {
         const loadAccounts = async () => {
             try {
-                const data = await fetchAccount();
-                setAccounts(data);
-                if (data.length > 0) setFromAccount(data[0].accountNumber);
+                // 1. Load user's own accounts (for From dropdown)
+                const userAccs = await fetchAccount();
+                setUserAccounts(userAccs);
+                if (userAccs.length > 0) setFromAccount(userAccs[0].accountNumber);
+
+                // 2. Load ALL accounts (for To dropdown)
+                const allAccs = await fetchAllAccounts();
+                const userAccountsNumbers =  userAccs.map(acc => acc.accountNumber);
+                const otherAccounts=allAccs.filter(
+                    acc => !userAccountsNumbers.includes(acc.accountNumber)
+                );
+
+                setAllAccounts(otherAccounts);
+                if(otherAccounts.length > 0) setAllAccounts(otherAccounts);
+                else setAllAccounts([]);
+
             } catch (error) {
                 console.error('Failed to load accounts', error);
             }
@@ -34,9 +47,8 @@ export default function TransferPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
-        setStatus({type: null, message: ''});
+        setStatus({ type: null, message: '' });
 
-        // 🔥 Generate a UNIQUE Idempotency Key per request!
         const idempotencyKey = crypto.randomUUID();
 
         try {
@@ -52,13 +64,9 @@ export default function TransferPage() {
                 message: `✅ Transfer successful! Transaction ID: ${response.data.transactionId}`
             });
 
-            // Optionally, clear the form or redirect after a delay
-            setTimeout(() => {
-                navigate('/history');
-            }, 2000);
+            setTimeout(() => navigate('/history'), 2000);
 
         } catch (error: any) {
-            // Check if it's a duplicate transaction (409 Conflict)
             if (error.response?.status === 409) {
                 setStatus({
                     type: 'error',
@@ -80,14 +88,13 @@ export default function TransferPage() {
             <h2 className="text-xl font-bold mb-6">💸 Transfer Money</h2>
 
             {status.message && (
-                <div
-                    className={`p-4 rounded mb-4 ${status.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                <div className={`p-4 rounded mb-4 ${status.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                     {status.message}
                 </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
-                {/* From Account */}
+                {/* From Account (User's own accounts) */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">From Account</label>
                     <select
@@ -96,7 +103,7 @@ export default function TransferPage() {
                         onChange={(e) => setFromAccount(e.target.value)}
                         required
                     >
-                        {accounts.map((acc) => (
+                        {userAccounts.map((acc) => (
                             <option key={acc.accountNumber} value={acc.accountNumber}>
                                 {acc.accountNumber} (Balance: {acc.balance} {acc.currency})
                             </option>
@@ -104,17 +111,21 @@ export default function TransferPage() {
                     </select>
                 </div>
 
-                {/* To Account */}
+                {/* To Account (All accounts) */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">To Account</label>
-                    <input
-                        type="text"
-                        placeholder="Account number"
+                    <select
                         className="w-full p-2 border rounded"
                         value={toAccount}
                         onChange={(e) => setToAccount(e.target.value)}
                         required
-                    />
+                    >
+                        {allAccounts.map((acc) => (
+                            <option key={acc.accountNumber} value={acc.accountNumber}>
+                                {acc.accountNumber}
+                            </option>
+                        ))}
+                    </select>
                 </div>
 
                 {/* Amount */}
@@ -131,24 +142,9 @@ export default function TransferPage() {
                     />
                 </div>
 
-                {/* Currency */}
-                {/*<div>*/}
-                {/*    <label className="block text-sm font-medium text-gray-700 mb-1">Currency</label>*/}
-                {/*    <select*/}
-                {/*        className="w-full p-2 border rounded"*/}
-                {/*        value={currency}*/}
-                {/*        onChange={(e) => setCurrency(e.target.value)}*/}
-                {/*    >*/}
-                {/*        <option value="USD">USD</option>*/}
-                {/*        <option value="EUR">EUR</option>*/}
-                {/*        <option value="GBP">GBP</option>*/}
-                {/*        <option value="INR">INR</option>*/}
-                {/*    </select>*/}
-                {/*</div>*/}
-
                 <button
                     type="submit"
-                    disabled={loading || accounts.length === 0}
+                    disabled={loading || userAccounts.length === 0 || allAccounts.length === 0}
                     className="w-full bg-green-600 text-white p-2 rounded hover:bg-green-700 disabled:opacity-50"
                 >
                     {loading ? 'Processing...' : 'Send Money'}

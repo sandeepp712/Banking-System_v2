@@ -133,4 +133,8 @@ public class AccountService {
     public List<Account> getAccountsForUser(UUID currentUser) {
         return accountRepository.findAccountsForUser(currentUser);
     }
+
+    public List<Account> getAllAccounts() {
+        return accountRepository.findAllAccounts();
+    }
 }

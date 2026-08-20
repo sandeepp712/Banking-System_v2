@@ -1,6 +1,6 @@
-import { JSX } from 'react'
+import type { JSX } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "./features/auth/AuthContext.tsx";
+import { AuthProvider, useAuth } from "./context/AuthContext.tsx";
 import LoginPage from "./features/auth/LoginPage.tsx";
 import RegisterPage from "./features/auth/RegisterPage.tsx";
 import Layout from "./features/layout/Layout.tsx";

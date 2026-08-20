@@ -79,6 +79,11 @@ public class JdbcAccountRepository implements AccountRepository {
         return jdbcTemplate.query(sql, rowMapper);
     }
 
+    public List<Account> findAllAccounts() {
+        String sql = "Select * from accounts";
+        return jdbcTemplate.query(sql, rowMapper);
+    }
+
     public void delete(String accountNumber) {
         String sql = "Delete from accounts where account_number = ?";
         jdbcTemplate.update(sql, accountNumber);
