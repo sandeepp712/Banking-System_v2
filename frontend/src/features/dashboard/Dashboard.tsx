@@ -1,7 +1,7 @@
 // src/features/dashboard/Dashboard.tsx
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../auth/AuthContext';
+import { useAuth } from '../../context/AuthContext.tsx';
 import { fetchAccount } from '../../api/accountApi';
 import { fetchTransaction } from '../../api/accountApi';
 import type {Account,Transaction} from "../../api/accountApi";
