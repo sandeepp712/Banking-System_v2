@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { bankingApiClient } from '../../api/client';
-import { fetchAccount, fetchAllAccounts } from '../../api/accountApi';
+import {useState, useEffect} from 'react';
+import {useNavigate} from 'react-router-dom';
+import {bankingApiClient} from '../../api/client';
+import {fetchAccount, fetchAllAccounts} from '../../api/accountApi';
 import type {Account} from "../../api/accountApi";
 
 export default function TransferPage() {
@@ -28,14 +28,16 @@ export default function TransferPage() {
 
                 // 2. Load ALL accounts (for To dropdown)
                 const allAccs = await fetchAllAccounts();
-                const userAccountsNumbers =  userAccs.map(acc => acc.accountNumber);
-                const otherAccounts=allAccs.filter(
+                const userAccountsNumbers = userAccs.map(acc => acc.accountNumber);
+                const otherAccounts = allAccs.filter(
                     acc => !userAccountsNumbers.includes(acc.accountNumber)
                 );
 
                 setAllAccounts(otherAccounts);
-                if(otherAccounts.length > 0) setAllAccounts(otherAccounts);
-                else setAllAccounts([]);
+                if (otherAccounts.length > 0) {
+                    setToAccount(allAccs[0].accountNumber);
+                    setAllAccounts(otherAccounts);
+                } else setAllAccounts([]);
 
             } catch (error) {
                 console.error('Failed to load accounts', error);
@@ -47,7 +49,7 @@ export default function TransferPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
-        setStatus({ type: null, message: '' });
+        setStatus({type: null, message: ''});
 
         const idempotencyKey = crypto.randomUUID();
 
@@ -88,7 +90,8 @@ export default function TransferPage() {
             <h2 className="text-xl font-bold mb-6">💸 Transfer Money</h2>
 
             {status.message && (
-                <div className={`p-4 rounded mb-4 ${status.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                <div
+                    className={`p-4 rounded mb-4 ${status.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                     {status.message}
                 </div>
             )}
