@@ -42,7 +42,7 @@ export default function TransferPage() {
                 }
 
             } catch (error) {
-                console.error('Failed to load accounts', error);
+                console.error('Failed to load accounts', error );
             }
         };
         loadAccounts();
