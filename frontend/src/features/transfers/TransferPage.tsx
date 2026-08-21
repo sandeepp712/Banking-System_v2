@@ -36,9 +36,10 @@ export default function TransferPage() {
 
                 setAllAccounts(otherAccounts);
                 if (otherAccounts.length > 0) {
-                    setToAccount(allAccs[0].accountNumber);
-                    setAllAccounts(otherAccounts);
-                } else setAllAccounts([]);
+                    setToAccount(otherAccounts[0].accountNumber);
+                } else {
+                    setToAccount('');
+                }
 
             } catch (error) {
                 console.error('Failed to load accounts', error);
@@ -118,18 +119,24 @@ export default function TransferPage() {
                 {/* To Account (All accounts) */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">To Account</label>
-                    <select
-                        className="w-full p-2 border rounded"
-                        value={toAccount}
-                        onChange={(e) => setToAccount(e.target.value)}
-                        required
-                    >
-                        {allAccounts.map((acc) => (
-                            <option key={acc.accountNumber} value={acc.accountNumber}>
-                                {acc.accountNumber}
-                            </option>
-                        ))}
-                    </select>
+                    {allAccounts.length === 0 ? (
+                        <div className="p-2 border rounded bg-gray-100 text-gray-500 text-sm">
+                            No other accounts available to transfer to.
+                        </div>
+                    ) : (
+                        <select
+                            className="w-full p-2 border rounded"
+                            value={toAccount}
+                            onChange={(e) => setToAccount(e.target.value)}
+                            required
+                        >
+                            {allAccounts.map((acc) => (
+                                <option key={acc.accountNumber} value={acc.accountNumber}>
+                                    {acc.accountNumber} ({acc.currency})
+                                </option>
+                            ))}
+                        </select>
+                    )}
                 </div>
 
                 {/* Amount */}

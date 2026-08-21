@@ -50,7 +50,7 @@ public class AuthController {
         //2. Create an HttpOnly cookie
         ResponseCookie cookie = ResponseCookie.from("JWT_TOKEN", token)
                 .httpOnly(true)
-                .secure(false)
+                .secure(true)
                 .path("/")
                 .maxAge(24 * 60 * 60)
                 .sameSite("Strict")                     //CSRF protection
@@ -67,7 +67,7 @@ public class AuthController {
     public ResponseEntity<?> logout(HttpServletResponse response) {
         ResponseCookie cookie = ResponseCookie.from("JWT_TOKEN", "")
                 .httpOnly(true)
-                .secure(false)
+                .secure(true)
                 .path("/")
                 .maxAge(0)
                 .sameSite("Strict")
