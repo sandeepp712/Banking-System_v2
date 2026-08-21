@@ -3,6 +3,7 @@ import {useNavigate} from 'react-router-dom';
 import {bankingApiClient} from '../../api/client';
 import {fetchAccount, fetchAllAccounts} from '../../api/accountApi';
 import type {Account} from "../../api/accountApi";
+import {generateIdempotencyKey} from "../../lib/utils/Fallbackfunction.ts";
 
 export default function TransferPage() {
     const [userAccounts, setUserAccounts] = useState<Account[]>([]);   // For "From Account"
@@ -51,7 +52,7 @@ export default function TransferPage() {
         setLoading(true);
         setStatus({type: null, message: ''});
 
-        const idempotencyKey = crypto.randomUUID();
+        const idempotencyKey = generateIdempotencyKey();
 
         try {
             const response = await bankingApiClient.post('/transfers', {

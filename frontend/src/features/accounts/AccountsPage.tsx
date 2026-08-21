@@ -4,6 +4,7 @@ import {fetchAccount, deposit, withdraw} from "../../api/accountApi";
 import type {Account} from "../../api/accountApi";
 import CreateAccountForm from "./CreateAccountForm";
 import TransactionModal from "./TransactionModal.tsx";
+import {generateIdempotencyKey} from "../../lib/utils/Fallbackfunction.ts";
 
 
 export default function AccountsPage() {
@@ -42,7 +43,7 @@ export default function AccountsPage() {
     const handleTransaction = async (amount: number) => {
         if (!selectedAccount) return;
 
-        const idemoptencyKey = crypto.randomUUID();
+        const idemoptencyKey = generateIdempotencyKey();
 
         if (modalType === "deposit") {
             await deposit(selectedAccount.accountNumber, amount, idemoptencyKey);
