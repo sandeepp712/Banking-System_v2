@@ -142,7 +142,8 @@ public class AuthIntegrationTest {
     @DisplayName("Test login succes")
     public void login_success_UserTest() {
 //         Register first
-        var request = new AuthController.RegisterRequest("testuser1", "secreASDf23$@#te", "RETAIL_USER");
+        String usernname="testuser_"+UUID.randomUUID();
+        var request = new AuthController.RegisterRequest(usernname, "secreASDf23$@#te", "RETAIL_USER");
 
         restClient.post()
                 .uri("/api/v1/auth/register")
@@ -152,15 +153,15 @@ public class AuthIntegrationTest {
 
 
         // Login
-        var loginRequest = new AuthController.LoginRequest("testuser1", "secreASDf23$@#te");
+        var loginRequest = new AuthController.LoginRequest(usernname, "secreASDf23$@#te");
         var response = restClient.post()
                 .uri("/api/v1/auth/login")
                 .body(loginRequest)
                 .retrieve()
                 .body(Map.class);
-
+        System.out.println(response);
         assertNotNull(response);
-        assertEquals("Login successful!", response.get("message"));
+        assertEquals("Login successfully!", response.get("message"));
     }
 
     @Test

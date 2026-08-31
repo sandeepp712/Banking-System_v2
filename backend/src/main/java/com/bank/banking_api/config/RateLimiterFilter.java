@@ -24,6 +24,13 @@ public class RateLimiterFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
+        // Inside RateLimiterFilter.java
+//        String clientIp = request.getRemoteAddr();
+//        if ("127.0.0.1".equals(clientIp) || "0:0:0:0:0:0:0:1".equals(clientIp)) {
+//            filterChain.doFilter(request, response);
+//            return; // Bypass rate limiting for local dev
+//        }
+
 
         // Only apply to auth endpoints
         String path = request.getRequestURI();

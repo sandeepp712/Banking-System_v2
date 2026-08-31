@@ -20,6 +20,7 @@ import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWrite
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.Arrays;
@@ -56,14 +57,28 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // 1. Explicitly list your frontend URL (Vite is usually 5173, React is 3000)
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173","https://shinro-bank.duckdns.org"));
 
+        // 1. Explicitly list th frontend URL (local +Production)
+        configuration.setAllowedOrigins(Arrays.asList(
+                "http://localhost:5173",
+                "https://shinro-bank.duckdns.org"
+        ));
+
+        // Allowed HTTP methods
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
+        // Allow Request Header (broswer send to server)
+        configuration.setAllowedHeaders(Arrays.asList(
+                "Origin",
+                "Content-Type",
+                "Accept",
+                "Authorization",
+                "X-Requested-With",
+                "Idempotency-Key"
+        ));
 
         // 2. CRITICAL: This MUST be true for HttpOnly cookies to work across domains/ports
         configuration.setAllowCredentials(true);
+        configuration.addExposedHeader("Set-Cookie");
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
@@ -95,33 +110,37 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable()).sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
 
-//                .exceptionHandling(ex -> ex
-//                        .authenticationEntryPoint((request, response, authException) -> {
-//
-//                            // 1. Log it as a WARN, not an ERROR.
-//                            // This prevents waking up the on-call engineer for a simple expired token.
-//                            Logger log = LoggerFactory.getLogger("SecurityAudit");
-//                            log.warn("Authentication failed for path {}: {}", request.getRequestURI(), authException.getMessage());
-//
-//                            // 2. Set the correct HTTP Status
-//                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401
-//                            response.setContentType("application/json");
-//                            response.setCharacterEncoding("UTF-8");
-//
-//                            // 3. Write a clean JSON response
-//                            Map<String, Object> errorBody = new HashMap<>();
-//                            errorBody.put("errorCode", "UNAUTHORIZED");
-//                            errorBody.put("message", authException.getMessage());
-//                            errorBody.put("status", 401);
-//                            errorBody.put("path", request.getRequestURI());
-//
-//                            new ObjectMapper().writeValue(response.getOutputStream(), errorBody);
-//                        })
-//                )
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) -> {
+
+                            // 1. Log it as a WARN, not an ERROR.
+                            // This prevents waking up the on-call engineer for a simple expired token.
+                            Logger log = LoggerFactory.getLogger("SecurityAudit");
+                            log.warn("Authentication failed for path {}: {}", request.getRequestURI(), authException.getMessage());
+
+                            // 2. Set the correct HTTP Status
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401
+                            response.setContentType("application/json");
+                            response.setCharacterEncoding("UTF-8");
+
+                            // 3. Write a clean JSON response
+                            Map<String, Object> errorBody = new HashMap<>();
+                            errorBody.put("errorCode", "UNAUTHORIZED");
+                            errorBody.put("message", authException.getMessage());
+                            errorBody.put("status", 401);
+                            errorBody.put("path", request.getRequestURI());
+
+                            new ObjectMapper().writeValue(response.getOutputStream(), errorBody);
+                        })
+                )
 
 
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/login", "/api/v1/auth/register").permitAll()
+                        .requestMatchers("/api/v1/auth/login",
+                                "/api/v1/auth/register",
+                                "/api/v1/auth/logout",
+                                "/api/v1/auth/refresh")
+                        .permitAll()
 
                         // require a valid JWT for accounts
                         .requestMatchers("/api/accounts/**").authenticated()
