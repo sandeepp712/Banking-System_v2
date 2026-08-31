@@ -45,6 +45,18 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
     }
 
+    @ExceptionHandler(AuthenicationException.class)
+    public ResponseEntity<ErrorResponse> handleAuthenicationException(RuntimeException ex, HttpServletRequest request) {
+        ErrorResponse error = new ErrorResponse(
+                "AUTHENICATION_FAILED",
+                ex.getMessage(),
+                HttpStatus.UNAUTHORIZED.value(),
+                request.getRequestURI(),
+                Instant.now()
+        );
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
     @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
     public ResponseEntity<ErrorResponse> handleAuthenticationException(Authentication ex, HttpServletRequest request) {
         ErrorResponse error = new ErrorResponse(
@@ -88,7 +100,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleDuplicateKeyException(RuntimeException ex, HttpServletRequest request) {
         ErrorResponse error = new ErrorResponse(
                 "CONFLICT",
-                "A request with this idempotency key is already being processed or has been completed.",
+                "A duplicate value was rejected by a unique constraint.",
                 HttpStatus.CONFLICT.value(),
                 request.getRequestURI(),
                 Instant.now()

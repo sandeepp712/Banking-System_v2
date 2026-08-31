@@ -6,6 +6,7 @@ import java.util.Date;
 import java.util.UUID;
 
 import com.bank.banking_api.config.RSAKeyConfig;
+import com.bank.banking_api.domain.RefreshToken;
 import com.bank.banking_api.exception.JwtTokenExpiredException;
 import com.bank.banking_api.exception.JwtTokenInvalidException;
 import io.jsonwebtoken.Claims;
@@ -54,6 +55,7 @@ public class JwtTokenProvider {
                 .signWith(getSigningKey())
                 .compact();
     }
+
 
     // Single parse method: extract claims or throws the correct authenticationExceptions
     public Claims extractAllClaimsFromToken(String token) {

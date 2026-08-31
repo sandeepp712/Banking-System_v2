@@ -1,7 +1,6 @@
-package com.bank.banking_api.config;
+package com.bank.banking_api.controller;
 
 import com.bank.banking_api.security.CustomUserDetails;
-import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;

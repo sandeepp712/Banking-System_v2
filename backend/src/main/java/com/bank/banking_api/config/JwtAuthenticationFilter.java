@@ -31,6 +31,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.userDetailsService = userDetailsService;
     }
 
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+
+        return path.equals("/api/v1/auth/login")
+                || path.equals("/api/v1/auth/register")
+                || path.equals("/api/v1/auth/refresh")
+                || path.equals("/api/v1/auth/logout")
+                || path.startsWith("/actuator/")
+                || path.equals("/error");
+    }
+
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -38,17 +50,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain chain) throws ServletException, IOException, JwtTokenExpiredException, JwtTokenInvalidException {
         //1 Bypass the public endpoints
         // If the request is for auth, actuator, or error, skip JWT validation entirely.
-        String path = request.getRequestURI();
-        if (path.startsWith("/api/v1/auth/login") || path.startsWith("/api/v1/auth/register") || path.startsWith("/actuator/") || path.equals("/error")) {
-            chain.doFilter(request, response);
-            return;
-        }
+//        String path = request.getRequestURI();
+//        if (path.startsWith("/api/v1/auth/login") || path.startsWith("/api/v1/auth/register") || path.startsWith("/actuator/") || path.equals("/error")) {
+//            chain.doFilter(request, response);
+//            return;
+//        }
 
         String token = resolveToken(request);
 //        String userAgent = request.getHeader("User-Agent");
 //
 //        System.out.printf("JWT FILTER TRIGGERED! Method: {}, Path: {}, User-Agent: {}",request.getMethod(),path,userAgent);
-        System.out.println("JWT FILTER TRIGGERED! token: " + token);
+//        System.out.println("JWT FILTER TRIGGERED! token: " + token);
         if (token == null) {
             Cookie[] cookies = request.getCookies();
             if (cookies != null) {
