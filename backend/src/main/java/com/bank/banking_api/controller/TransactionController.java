@@ -3,8 +3,10 @@ package com.bank.banking_api.controller;
 import com.bank.banking_api.domain.Money;
 import com.bank.banking_api.domain.Transaction;
 import com.bank.banking_api.domain.TransactionStatus;
+import com.bank.banking_api.dto.TransactionDto;
 import com.bank.banking_api.persistence.JdbcTransactionRepository;
 import com.bank.banking_api.security.CustomUserDetails;
+import com.bank.banking_api.service.TransferService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,10 +21,10 @@ import java.util.UUID;
 @RequestMapping("/api/v1/transactions")
 public class TransactionController {
 
-    private final JdbcTransactionRepository transactionRepository;
+    private final TransferService transferService;
 
-    public TransactionController(JdbcTransactionRepository transactionRepository) {
-        this.transactionRepository = transactionRepository;
+    public TransactionController(TransferService transferService) {
+        this.transferService = transferService;
     }
 
     @GetMapping
@@ -30,30 +32,9 @@ public class TransactionController {
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         UUID userId = userDetails.getUserId();
 
-        List<Transaction> transactions = transactionRepository.findByUserId(userId);
-
-        List<TransactionDto> dtos = transactions.stream()
-                .map(tx -> new TransactionDto(
-                        tx.getId(),
-                        tx.getFromAccountId(),
-                        tx.getToAccountId(),
-                        tx.getAmount(),
-                        tx.getStatus(),
-                        tx.getCreatedAt(),
-                        tx.getCompletedAt()
-                ))
-                .toList();
-
+        List<TransactionDto> dtos = transferService.getTransactionHistory(userId);
         return ResponseEntity.ok(dtos);
     }
 
-    public record TransactionDto(
-            UUID transactionId,
-            String fromAccount,
-            String toAccount,
-            Money amount,
-            TransactionStatus status,
-            Instant createdAt,
-            Instant completedAt
-    ) {}
+
 }

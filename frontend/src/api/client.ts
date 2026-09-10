@@ -25,58 +25,65 @@ let failedQueue: Array<{
     reject: (value?: unknown) => void;
 }> = [];
 
-const processQueue = (error:any)=>{
-    failedQueue.forEach(item=>{
-        if(error){
+const processQueue = (error: any) => {
+    failedQueue.forEach(item => {
+        if (error) {
             item.reject(error);
-        }else{
+        } else {
             item.resolve();
         }
     });
-    failedQueue =[];
+    failedQueue = [];
 };
 
-const creatSilentRefreshInterceptor = (client:any)=>{
-    client.interceptors.request.use(
-        (response:any)=> response,
-        async (error:any)=>{
+const creatSilentRefreshInterceptor = (client: any) => {
+    client.interceptors.response.use(
+        (response: any) => response,
+        async (error: any) => {
             const originalRequest = error.config;
 
-            // if 401 and we haven't retried this specific request yet
-            if(error.response?.status===401 && !originalRequest._retry){
-
-                //if the refresh or login endpoint itself fails, force logout
-                if(originalRequest.url?.includes('/refresh') || originalRequest.url?.includes('/login')){
-                    window.location.href="/login";
-                    return Promise.reject(error);
-                }
-
-                if(isRefreshing){
-                    return new Promise((resolve,reject)=>{
-                        failedQueue.push({resolve,reject});
-                    }).then(()=>{
-                        return client(originalRequest);
-                    }).catch(error=>{Promise.reject(error)});
-                }
-
-                originalRequest._retry = true;
-                isRefreshing = true;
-
-                try{
-                    await authApiClient.post("/refresh");
-
-                    processQueue(null);
-
-                    return client(originalRequest);
-                }catch (refreshError){
-                    processQueue(refreshError);
-                    window.location.href="/login";
-                    return Promise.reject(refreshError);
-                }finally{
-                    isRefreshing = false;
-                }
+            // If the error is not 401, or we already retried, reject immediately.
+            if (error.response?.status !== 401 || originalRequest._retry) {
+                return Promise.reject(error);
             }
-            return Promise.reject(error);
+
+            // Avoid infinite loops: if the refresh or login endpoint itself fails,
+            // redirect to login.
+            if (
+                originalRequest.url?.includes('/refresh') ||
+                originalRequest.url?.includes('/login')
+            ) {
+                //if the refresh or login endpoint itself fails, force logout
+                window.location.href = "/login";
+                return Promise.reject(error);
+            }
+
+            if (isRefreshing) {
+                return new Promise((resolve, reject) => {
+                    failedQueue.push({resolve, reject});
+                }).then(() => {
+                    return client(originalRequest);
+                }).catch(error => {
+                    Promise.reject(error)
+                });
+            }
+
+            originalRequest._retry = true;
+            isRefreshing = true;
+
+            try {
+                await authApiClient.post("/refresh");
+
+                processQueue(null);
+
+                return client(originalRequest);
+            } catch (refreshError) {
+                processQueue(refreshError);
+                window.location.href = "/login";
+                return Promise.reject(refreshError);
+            } finally {
+                isRefreshing = false;
+            }
         }
     );
 };

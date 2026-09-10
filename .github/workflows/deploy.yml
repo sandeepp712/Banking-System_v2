@@ -44,6 +44,20 @@ jobs:
             # Navigate to the project directory
             cd ~/Banking-System_v2/backend
             
+            if [ ! -f .env ]; then
+              echo "❌ ERROR: .env file is missing! Aborting deployment."
+              exit 1
+            fi
+            
+            docker network inspect banking-net >/dev/null 2>&1 || docker network create banking-net
+            docker inspect redis >/dev/null 2>&1 && docker start redis || docker run -d \
+              --name redis \
+              --network banking-net \
+              --memory 128m \
+              --restart unless-stopped \
+              redis:7 redis-server --maxmemory 96mb --maxmemory-policy allkeys-lru
+
+
             # Pull the latest image from Docker Hub
             docker pull ${{ secrets.DOCKER_USERNAME }}/banking-api:latest
             
@@ -54,10 +68,29 @@ jobs:
             # Run the new container with the .env file
             docker run -d \
               --name banking-api \
+              --network banking-net \
               --env-file .env \
               -p 8080:8080 \
               --restart unless-stopped \
               ${{ secrets.DOCKER_USERNAME }}/banking-api:latest
             
+            
+            # Wait for the app to start (max 60 seconds)
+            echo "Waiting for banking-api to become healthy..."
+            for i in $(seq 1 30); do
+              if curl -sf http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then
+                echo "✅ Application is healthy!"
+                break
+              fi
+              if [ $i -eq 30 ]; then
+                echo "❌ Application failed to start. Printing logs:"
+                docker logs banking-api --tail 50
+                exit 1
+              fi
+              sleep 2
+            done
+            
+            
             # Clean up old, unused images to save disk space
             docker image prune -f
+            echo "✅ Deployment complete!"

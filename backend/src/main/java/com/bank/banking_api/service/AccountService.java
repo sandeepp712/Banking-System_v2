@@ -3,9 +3,15 @@ package com.bank.banking_api.service;
 import com.bank.banking_api.annotation.Auditable;
 import com.bank.banking_api.domain.*;
 import com.bank.banking_api.persistence.JdbcTransactionRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
 import java.util.List;
@@ -14,14 +20,21 @@ import java.util.UUID;
 
 @Service              // spring manage this bean(object)
 public class AccountService {
+    private static final Logger log= LoggerFactory.getLogger(AccountService.class);
+    private static final String CACHE_KEY_PREFIX = "txn:recent:";
+    private static final int BASE_TTL_SECONDS = 60;
+
     private final AccountRepository accountRepository;
     private final JdbcTransactionRepository transactionRepository;
+    private final StringRedisTemplate redisTemplate;
+
 
 
     //Spring will automatically inject the JdbcAccountRepository here!
-    public AccountService(AccountRepository accountRepository, JdbcTransactionRepository transactionRepository) {
+    public AccountService(AccountRepository accountRepository, JdbcTransactionRepository transactionRepository, StringRedisTemplate redisTemplate) {
         this.accountRepository = accountRepository;
         this.transactionRepository = transactionRepository;
+        this.redisTemplate = redisTemplate;
     }
 
     /**
@@ -48,8 +61,7 @@ public class AccountService {
     public Account getAccount(String accountNumber, UUID currentUser) {
         Account account = accountRepository.findByAccountNumber(accountNumber).orElseThrow(() -> new IllegalArgumentException("You do not have permission to access this account."));
 
-        System.out.println("DEBUG: JWT User ID = '" + currentUser + "'");
-        System.out.println("DEBUG: DB Owner ID = '" + account.getOwnerId() + "'");
+        log.debug("Access check: userId={},ownerId={}", currentUser, account.getOwnerId());
 
         if (!account.getOwnerId().equals(currentUser)) {
             throw new AccessDeniedException("You do not have permission to access this account.");
@@ -72,7 +84,22 @@ public class AccountService {
         // Check the idempotency key
         Optional<Transaction> existingKey = transactionRepository.findByIdempotencyKey(idempotency_key);
         if (existingKey.isPresent()) {
-            return account;
+            Transaction tx = existingKey.get();
+
+            boolean payloadMatches = accountNumber.equals(tx.getToAccountId())
+                    && tx.getAmount().equals(amount);
+
+            if(!payloadMatches) {
+                throw new IllegalArgumentException("Idempotency key "+ idempotency_key + " was previously used with a differnet payload.");
+            }
+
+            if(tx.getStatus() == TransactionStatus.COMMITTED) {
+                return account;
+            }else if(tx.getStatus() == TransactionStatus.PENDING){
+                throw new IllegalStateException("Transaction is currently processing");
+            }else if(tx.getStatus() == TransactionStatus.FAILED){
+                throw new IllegalStateException("Previous attempt failed. Please retry with a new key.");
+            }
         }
 
         //2 Perform business logic
@@ -93,6 +120,17 @@ public class AccountService {
                 .build();
 
         transactionRepository.save(transaction);
+        UUID receiverId = account.getOwnerId();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    redisTemplate.delete(List.of("txn:recent:" + receiverId));
+                } catch (Exception e) {
+                    log.warn("Post-commit cache eviction failed for user {}: {}", receiverId, e.getMessage());
+                }
+            }
+        });
 
         return account;
     }
@@ -106,7 +144,22 @@ public class AccountService {
         // Check the idempotency key
         Optional<Transaction> existingKey = transactionRepository.findByIdempotencyKey(idempotency_key);
         if (existingKey.isPresent()) {
-            return account;
+            Transaction tx = existingKey.get();
+
+            boolean payloadMatches = accountNumber.equals(tx.getFromAccountId())
+                    && tx.getAmount().equals(amount);
+
+            if(!payloadMatches) {
+                throw new IllegalArgumentException("Idempotency key "+ idempotency_key + " was previously used with a differnet payload.");
+            }
+
+            if(tx.getStatus() == TransactionStatus.COMMITTED) {
+                return account;
+            }else if(tx.getStatus() == TransactionStatus.PENDING){
+                throw new IllegalStateException("Transaction is currently processing");
+            }else if(tx.getStatus() == TransactionStatus.FAILED){
+                throw new IllegalStateException("Previous attempt failed. Please retry with a new key.");
+            }
         }
 
         //2 Perform business logic
@@ -126,6 +179,19 @@ public class AccountService {
                 .errorMessage("none")
                 .build();
         transactionRepository.save(transaction);
+
+
+        UUID senderId = account.getOwnerId();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    redisTemplate.delete(List.of("txn:recent:" + senderId));
+                } catch (Exception e) {
+                    log.warn("Post-commit cache eviction failed for user {}: {}", senderId, e.getMessage());
+                }
+            }
+        });
 
         return account;
     }
