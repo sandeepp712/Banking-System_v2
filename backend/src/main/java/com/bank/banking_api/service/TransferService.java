@@ -139,22 +139,23 @@ public class TransferService {
                 UUID senderUserId = from.getOwnerId();
                 UUID receiverUserId = to.getOwnerId();
 
-                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                    @Override
-                    public void afterCommit() {
-                        try {
-                            List<String> keysToDelete = List.of(
-                                    "txn:recent:" + senderUserId,
-                                    "txn:recent:" + receiverUserId
-                            );
-                            redisTemplate.delete(keysToDelete);
-                        } catch (Exception e) {
-                            log.warn("Post-commit cache eviction failed for users {} and {}:{}",
-                                    senderUserId, receiverUserId, e.getMessage());
+                if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            try {
+                                List<String> keysToDelete = List.of(
+                                        "txn:recent:" + senderUserId,
+                                        "txn:recent:" + receiverUserId
+                                );
+                                redisTemplate.delete(keysToDelete);
+                            } catch (Exception e) {
+                                log.warn("Post-commit cache eviction failed for users {} and {}:{}",
+                                        senderUserId, receiverUserId, e.getMessage());
+                            }
                         }
-                    }
-                });
-
+                    });
+                }
                 return committed;
             } catch (RuntimeException e) {
                 String errorCode = resolveErrorCode(e);
@@ -170,12 +171,13 @@ public class TransferService {
         String cacheKey = CACHE_KEY_PREFIX + userId.toString();
 
         try {
-            String cacheJson=redisTemplate.opsForValue().get(cacheKey);
+            String cacheJson = redisTemplate.opsForValue().get(cacheKey);
             if (cacheJson != null) {
                 cacheHitsCounter.increment();
-                return objectMapper.readValue(cacheJson, new TypeReference<List<TransactionDto>>() {});
+                return objectMapper.readValue(cacheJson, new TypeReference<List<TransactionDto>>() {
+                });
             }
-        }catch (Exception e){
+        } catch (Exception e) {
             log.warn("Redis read failure for key {}. Falling back to DB: {}", cacheKey, e.getMessage());
         }
 
@@ -196,11 +198,11 @@ public class TransferService {
                 .toList();
 
         try {
-            String json=objectMapper.writeValueAsString(dtos);
-            long jitterTtl= BASE_TTL_SECONDS + ThreadLocalRandom.current().nextInt(-6,7);
-            redisTemplate.opsForValue().set(cacheKey,json, Duration.ofSeconds(jitterTtl));
-        }catch (Exception e){
-            log.warn("Redis write failure for key {}:{}",cacheKey,e.getMessage());
+            String json = objectMapper.writeValueAsString(dtos);
+            long jitterTtl = BASE_TTL_SECONDS + ThreadLocalRandom.current().nextInt(-6, 7);
+            redisTemplate.opsForValue().set(cacheKey, json, Duration.ofSeconds(jitterTtl));
+        } catch (Exception e) {
+            log.warn("Redis write failure for key {}:{}", cacheKey, e.getMessage());
         }
         return dtos;
     }

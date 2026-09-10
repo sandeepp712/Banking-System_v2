@@ -121,6 +121,7 @@ public class AccountService {
 
         transactionRepository.save(transaction);
         UUID receiverId = account.getOwnerId();
+        if(TransactionSynchronizationManager.isSynchronizationActive()) {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
@@ -131,6 +132,7 @@ public class AccountService {
                 }
             }
         });
+        }
 
         return account;
     }
@@ -182,6 +184,7 @@ public class AccountService {
 
 
         UUID senderId = account.getOwnerId();
+        if(TransactionSynchronizationManager.isSynchronizationActive()) {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
@@ -192,6 +195,7 @@ public class AccountService {
                 }
             }
         });
+        }
 
         return account;
     }

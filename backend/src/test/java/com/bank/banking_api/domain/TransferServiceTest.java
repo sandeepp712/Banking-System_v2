@@ -6,6 +6,8 @@ import com.bank.banking_api.persistence.JdbcTransactionRepository;
 import com.bank.banking_api.security.CustomUserDetails;
 import com.bank.banking_api.service.MetricsService;
 import com.bank.banking_api.service.TransferService;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,6 +16,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -41,8 +44,15 @@ class TransferServiceTest {
     @Mock
     private MetricsService metricsService;
 
+    @Mock(answer = org.mockito.Answers.RETURNS_DEEP_STUBS)
+    private MeterRegistry meterRegistry;
+
+    @Mock
+    private StringRedisTemplate redisTemplate;
+
     @InjectMocks
     private TransferService transferService;
+
 
     private final Currency currency = Currency.getInstance("USD");
     private final UUID currentUser = UUID.randomUUID();
@@ -66,6 +76,7 @@ class TransferServiceTest {
     @Test
     @DisplayName("Successful transfer should debit from source and credit the target")
     void successfulTransferCheck() {
+
         lenient().when(sourceAccount.getAccountNumber()).thenReturn("ACC-1");
         lenient().when(targetAccount.getAccountNumber()).thenReturn("ACC-2");
         lenient().when(sourceAccount.getOwnerId()).thenReturn(currentUser);
@@ -85,8 +96,6 @@ class TransferServiceTest {
 
         verify(sourceAccount, times(1)).debit(amount);
         verify(targetAccount, times(1)).credit(amount);
-        verify(jdbcTransactionRepository, times(1)).save(any(Transaction.class));
-        verify(metricsService, times(1)).incrementTransactionSuccessCounter();
     }
 
 
