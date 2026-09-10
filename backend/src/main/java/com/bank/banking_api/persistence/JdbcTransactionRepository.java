@@ -91,7 +91,7 @@ public class JdbcTransactionRepository implements TransactionRepository {
                  SELECT t.* FROM transactions t
                         JOIN accounts a ON a.account_number = t.from_account OR a.account_number = t.to_account
                         WHERE a.user_id = ?
-                        ORDER BY t.created_at DESC
+                        ORDER BY t.created_at DESC LIMIT 15;
                 """;
 
         return jdbcTemplate.query(sql, rowMapper, userId);

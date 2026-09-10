@@ -2,41 +2,68 @@ package com.bank.banking_api.service;
 
 import com.bank.banking_api.annotation.Auditable;
 import com.bank.banking_api.domain.*;
-import com.bank.banking_api.dto.TransactionResponse;
+import com.bank.banking_api.dto.TransactionDto;
 import com.bank.banking_api.exception.AccountNotFoundException;
 import com.bank.banking_api.exception.DuplicateTransactionException;
 import com.bank.banking_api.exception.InsufficientFundsException;
 import com.bank.banking_api.persistence.JdbcTransactionRepository;
 import com.bank.banking_api.exception.AccessDeniedException;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 
 @Service
 public class TransferService {
+    private static final Logger log = LoggerFactory.getLogger(TransferService.class);
+    private static final String CACHE_KEY_PREFIX = "txn:recent:";
+    private static final int BASE_TTL_SECONDS = 60;
+
     private final AccountRepository accountRepository;
     private final JdbcTransactionRepository transactionRepository;
     private final ObjectMapper objectMapper;
     private final MetricsService metricsService;
+    private final StringRedisTemplate redisTemplate;
 
-    public TransferService(AccountRepository accountRepository, JdbcTransactionRepository transactionRepository, ObjectMapper objectMapper, MetricsService metricsService) {
+    private final Counter cacheHitsCounter;
+    private final Counter cacheMissesCounter;
+
+
+    public TransferService(AccountRepository accountRepository, JdbcTransactionRepository transactionRepository, ObjectMapper objectMapper, MetricsService metricsService, StringRedisTemplate redisTemplate, MeterRegistry meterRegistry) {
         this.accountRepository = accountRepository;
         this.transactionRepository = transactionRepository;
         this.objectMapper = objectMapper;
         this.metricsService = metricsService;
+        this.redisTemplate = redisTemplate;
+
+        this.cacheHitsCounter = Counter.builder("cache_hits_total")
+                .tag("cache", "txn_recent")
+                .description("Total cache hits for transaction history")
+                .register(meterRegistry);
+
+        this.cacheMissesCounter = Counter.builder("cache_misses_total")
+                .tag("cache", "txn_recent")
+                .description("Total cache misses for transaction history")
+                .register(meterRegistry);
     }
 
     @Transactional
-    @Auditable(action = "TRANSFER",sourceAccountArgIndex = 0, targetAccountArgIndex = 1)
+    @Auditable(action = "TRANSFER", sourceAccountArgIndex = 0, targetAccountArgIndex = 1)
     public Transaction transfer(String fromAccountId, String toAccountId, Money amount,
                                 String idempotencyKey, UUID currentUser) {
         // 0. Validate input
@@ -109,14 +136,75 @@ public class TransferService {
                 transactionRepository.save(committed);
                 metricsService.incrementTransactionSuccessCounter();
 
+                UUID senderUserId = from.getOwnerId();
+                UUID receiverUserId = to.getOwnerId();
+
+                if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            try {
+                                List<String> keysToDelete = List.of(
+                                        "txn:recent:" + senderUserId,
+                                        "txn:recent:" + receiverUserId
+                                );
+                                redisTemplate.delete(keysToDelete);
+                            } catch (Exception e) {
+                                log.warn("Post-commit cache eviction failed for users {} and {}:{}",
+                                        senderUserId, receiverUserId, e.getMessage());
+                            }
+                        }
+                    });
+                }
                 return committed;
             } catch (RuntimeException e) {
-                String errorCode=resolveErrorCode(e);
+                String errorCode = resolveErrorCode(e);
                 metricsService.incrementTransactionFailureCounter(errorCode);
                 throw e;
             }
 
         });
+    }
+
+
+    public List<TransactionDto> getTransactionHistory(UUID userId) {
+        String cacheKey = CACHE_KEY_PREFIX + userId.toString();
+
+        try {
+            String cacheJson = redisTemplate.opsForValue().get(cacheKey);
+            if (cacheJson != null) {
+                cacheHitsCounter.increment();
+                return objectMapper.readValue(cacheJson, new TypeReference<List<TransactionDto>>() {
+                });
+            }
+        } catch (Exception e) {
+            log.warn("Redis read failure for key {}. Falling back to DB: {}", cacheKey, e.getMessage());
+        }
+
+        cacheMissesCounter.increment();
+
+        List<Transaction> transactions = transactionRepository.findByUserId(userId);
+
+        List<TransactionDto> dtos = transactions.stream()
+                .map(tx -> new TransactionDto(
+                        tx.getId(),
+                        tx.getFromAccountId(),
+                        tx.getToAccountId(),
+                        tx.getAmount(),
+                        tx.getStatus(),
+                        tx.getCreatedAt(),
+                        tx.getCompletedAt()
+                ))
+                .toList();
+
+        try {
+            String json = objectMapper.writeValueAsString(dtos);
+            long jitterTtl = BASE_TTL_SECONDS + ThreadLocalRandom.current().nextInt(-6, 7);
+            redisTemplate.opsForValue().set(cacheKey, json, Duration.ofSeconds(jitterTtl));
+        } catch (Exception e) {
+            log.warn("Redis write failure for key {}:{}", cacheKey, e.getMessage());
+        }
+        return dtos;
     }
 
     // Add this helper method to TransferService
