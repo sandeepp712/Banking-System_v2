@@ -61,7 +61,8 @@ public class SecurityConfig {
         // 1. Explicitly list th frontend URL (local +Production)
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:5173",
-                "https://shinro-bank.duckdns.org"
+                "https://shinro-bank.duckdns.org",
+                "https://d3f749x9rx2she.cloudfront.net"
         ));
 
         // Allowed HTTP methods

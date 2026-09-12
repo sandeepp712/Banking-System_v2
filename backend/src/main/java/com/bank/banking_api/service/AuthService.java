@@ -150,10 +150,10 @@ public class AuthService {
     private void issueAccessToken(String accessToken, HttpServletResponse response) {
         ResponseCookie cookie=ResponseCookie.from("JWT_TOKEN",accessToken)
                 .httpOnly(true)
-                .secure(false)
+                .secure(true)
                 .path("/")
                 .maxAge(Duration.ofMinutes(15))
-                .sameSite("Strict")
+                .sameSite("None")
                 .build();
         response.addHeader("Set-Cookie", cookie.toString());
     }
@@ -182,7 +182,7 @@ public class AuthService {
                 .secure(true)
                 .path("/")
                 .maxAge(Duration.ofDays(30))
-                .sameSite("Strict")
+                .sameSite("None")
                 .build();
         res.addHeader("Set-Cookie", cookie.toString());
     }

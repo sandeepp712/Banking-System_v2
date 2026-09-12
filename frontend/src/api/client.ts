@@ -4,7 +4,7 @@ import axios from "axios";
 // 1. AUTH CLIENT (For Login, Register, Logout)
 // ==========================================
 export const authApiClient = axios.create({
-    baseURL: "http://localhost:8080/api/v1/auth/",
+    baseURL: "https://shinro.duckdns.org/api/v1/auth/",
     headers: {'Content-Type': 'application/json'},
     withCredentials: true,
 });
@@ -13,7 +13,7 @@ export const authApiClient = axios.create({
 // 2. BANKING CLIENT (For Accounts, Transfers)
 // ==========================================
 export const bankingApiClient = axios.create({
-    baseURL: "http://localhost:8080/api/v1/",
+    baseURL: "https://shinro.duckdns.org/api/v1/",
     headers: {'Content-Type': 'application/json'},
     withCredentials: true,
 });
