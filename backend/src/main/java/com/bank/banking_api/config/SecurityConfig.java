@@ -62,7 +62,7 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:5173",
                 "https://shinro-bank.duckdns.org",
-                "https://d3f749x9rx2she.cloudfront.net"
+                "https://d9qweidhuephf.cloudfront.net"
         ));
 
         // Allowed HTTP methods
