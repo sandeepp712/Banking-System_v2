@@ -191,10 +191,10 @@ public class AuthService {
     private void clearCookie(String cookieName, HttpServletResponse res) {
         ResponseCookie cookie = ResponseCookie.from(cookieName,"")
                 .httpOnly(true)
-                .secure(false)
+                .secure(true)
                 .path("/")
                 .maxAge(0)
-                .sameSite("Strict")
+                .sameSite("None")
                 .build();
         res.addHeader("Set-Cookie", cookie.toString());
     }
